@@ -29,11 +29,21 @@ def check_terminology_rules(
         pattern = rule.get("pattern")
         fail_example = rule.get("fail_example", "")
         
-        # If no explicit regex pattern is provided, build one from fail_example or key phrases
-        if not pattern and fail_example:
-            # Escape regex special chars and match word boundaries
-            clean_phrase = re.escape(fail_example.strip())
-            pattern = rf"\b{clean_phrase}\b"
+        # If no explicit regex pattern is provided, extract quoted terms or keywords from title/description
+        if not pattern:
+            # Check for quoted phrases in title or description (e.g. 'Apex Cloud', '100% uptime guaranteed')
+            full_context = f"{rule.get('title', '')} {rule.get('description', '')}"
+            quoted_phrases = re.findall(r"['\"]([^'\"]{3,40})['\"]", full_context)
+            # Filter out non-prohibited quoted terms (like 'Apex Core' which is the pass example)
+            pass_ex = rule.get("pass_example", "")
+            prohibited_candidates = [p for p in quoted_phrases if p.lower() not in pass_ex.lower()]
+            
+            if prohibited_candidates:
+                clean_phrase = re.escape(prohibited_candidates[0].strip())
+                pattern = rf"\b{clean_phrase}\b"
+            elif fail_example and len(fail_example.strip()) <= 40:
+                clean_phrase = re.escape(fail_example.strip())
+                pattern = rf"\b{clean_phrase}\b"
             
         if not pattern:
             continue
@@ -41,6 +51,14 @@ def check_terminology_rules(
         try:
             regex = re.compile(pattern, re.IGNORECASE)
             for match in regex.finditer(text):
+                # Extract concise surgical correction term if available
+                suggested = rule.get("pass_example") or None
+                full_pass_context = f"{rule.get('title', '')} {rule.get('description', '')} {rule.get('pass_example', '')}"
+                quoted_pass = re.findall(r"['\"]([^'\"]{3,40})['\"]", full_pass_context)
+                approved_candidates = [p for p in quoted_pass if p.lower() in (rule.get("pass_example") or "").lower()]
+                if approved_candidates:
+                    suggested = approved_candidates[0]
+
                 findings.append({
                     "rule_id": rule.get("id"),
                     "rule_code": rule.get("rule_code"),
@@ -54,7 +72,7 @@ def check_terminology_rules(
                     "explanation": f"Found prohibited terminology '{match.group(0)}'. Guideline requires: {rule.get('description')}",
                     "evidence_status": "VERIFIED",
                     "confidence_tier": "DETERMINISTIC",
-                    "suggested_correction": rule.get("pass_example") or None,
+                    "suggested_correction": suggested,
                     "verification_status": "VERIFIED"
                 })
         except Exception:
