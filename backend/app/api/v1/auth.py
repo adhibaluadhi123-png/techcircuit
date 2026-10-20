@@ -39,9 +39,49 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         workspace_id=user.workspace_id
     )
 
+@router.post("/register", response_model=Token)
+def register(request: UserCreate, db: Session = Depends(get_db)):
+    """Register a new real user account and issue an authentication JWT."""
+    existing = db.query(User).filter(User.email == request.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
+    
+    workspace_id = request.workspace_id or settings.DEFAULT_WORKSPACE_ID
+    import uuid
+    new_user = User(
+        id=f"usr-{uuid.uuid4().hex[:8]}",
+        workspace_id=workspace_id,
+        email=request.email,
+        full_name=request.full_name,
+        role=request.role,
+        hashed_password=hash_password(request.password),
+        is_active=True
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    token_data = {
+        "sub": new_user.id,
+        "email": new_user.email,
+        "role": new_user.role,
+        "workspace_id": new_user.workspace_id
+    }
+    access_token = create_access_token(token_data)
+
+    return Token(
+        access_token=access_token,
+        token_type="bearer",
+        user_id=new_user.id,
+        email=new_user.email,
+        full_name=new_user.full_name,
+        role=new_user.role,
+        workspace_id=new_user.workspace_id
+    )
+
 @router.get("/users", response_model=List[UserResponse])
 def list_demo_users(db: Session = Depends(get_db)):
-    """List available demo users for easy role-switching during demonstrations."""
+    """List available users for easy role-switching during demonstrations."""
     users = db.query(User).filter(User.workspace_id == settings.DEFAULT_WORKSPACE_ID).all()
     return users
 

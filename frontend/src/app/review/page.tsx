@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   FileCheck2,
   Upload,
@@ -15,16 +16,18 @@ import {
   Layers,
   HelpCircle,
   Wand2,
-  Flame,
   Check,
-  Eye,
-  Send
+  Send,
+  X,
+  User,
+  Trash2,
+  FileCode
 } from "lucide-react";
-import { api, ReviewResult } from "@/lib/api";
+import { api, ReviewResult, User as UserType } from "@/lib/api";
 
 const PRESET_TEST_CASES = [
   {
-    badge: "Most Popular Demo",
+    badge: "Banned Terminology",
     name: "Scenario 1: Banned Name & Exaggeration",
     title: "Enterprise Product Launch Announcement",
     text: "Migrate your mission-critical workloads to Apex Cloud today. Apex Dynamics is the undisputed fastest platform in the world for machine learning inference, with 100% uptime guaranteed. Visit our website to sign up for an enterprise evaluation.",
@@ -32,31 +35,31 @@ const PRESET_TEST_CASES = [
   },
   {
     badge: "Expired Evidence",
-    name: "Scenario 2: Outdated 2025 Customer Number",
+    name: "Scenario 2: Outdated 2025 Customer Metric",
     title: "Quarterly Growth Highlights",
     text: "We are thrilled to celebrate our growing ecosystem! Join over 1,450 verified enterprise organizations deploying workloads on Apex Core. Explore our developer tutorials today.",
-    explain: "Quoting '1,450 customers' which expired on Dec 31, 2025 in the Approved Fact Vault.",
+    explain: "Quotes '1,450 customers' which expired on Dec 31, 2025 in the Approved Fact Vault.",
   },
   {
-    badge: "Tone Check",
-    name: "Scenario 3: Clickbait & Desperate Tone",
+    badge: "Tone & Voice",
+    name: "Scenario 3: Clickbait & Urgent Tone",
     title: "Social Viral Announcement",
     text: "OMG you WON'T BELIEVE what we just dropped!!! Run don't walk to grab this right now before prices double forever 🚀🔥💥 Sign up immediately!",
-    explain: "Excessive exclamation marks, emojis, and urgent clickbait depart from our measured voice.",
+    explain: "Excessive exclamation marks, emojis, and clickbait urgency violate brand voice.",
   },
   {
-    badge: "Privacy Masking",
+    badge: "Privacy Gateway",
     name: "Scenario 4: Secret Codename & Pricing",
     title: "Confidential Launch Preview",
     text: "We are secretly launching Project Prometheus with an unreleased price of $499 per mo. Check out our early documentation.",
     explain: "Redaction Gateway automatically masks confidential project names and pricing before AI checks.",
   },
   {
-    badge: "Perfect Post",
-    name: "Scenario 5: 100% Compliant Post",
+    badge: "Compliant Copy",
+    name: "Scenario 5: 100% Certified Launch Copy",
     title: "Observability Feature Release",
     text: "We are pleased to introduce enhanced observability dashboards for Apex Core. Engineered to satisfy our 99.98% SLA availability commitment, the new telemetry tools provide real-time cluster metrics. Learn more at our documentation portal.",
-    explain: "Passes all brand rules, quotes verified SLA numbers, and keeps measured authoritative tone.",
+    explain: "Passes all brand rules, quotes verified SLA numbers, and maintains measured authoritative tone.",
   },
 ];
 
@@ -69,6 +72,17 @@ export default function ReviewStudioPage() {
   const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
   const [activeStep, setActiveStep] = useState<string>("");
   const [stepPercent, setStepPercent] = useState<number>(0);
+  const [submitterName, setSubmitterName] = useState("Liam Chen");
+  const [submitterRole, setSubmitterRole] = useState("CREATOR");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedName = localStorage.getItem("canon_user_name");
+      const storedRole = localStorage.getItem("canon_user_role");
+      if (storedName) setSubmitterName(storedName);
+      if (storedRole) setSubmitterRole(storedRole);
+    }
+  }, []);
 
   const handlePresetSelect = (preset: typeof PRESET_TEST_CASES[0]) => {
     setTitle(preset.title);
@@ -77,14 +91,21 @@ export default function ReviewStudioPage() {
     setReviewResult(null);
   };
 
+  const handleClearAll = () => {
+    setTitle("");
+    setContentText("");
+    setSelectedFile(null);
+    setReviewResult(null);
+  };
+
   const handleRunReview = async () => {
     if (!contentText.trim() && !selectedFile) return;
     setReviewing(true);
     setStepPercent(20);
-    setActiveStep("1. Checking privacy & masking confidential terms...");
+    setActiveStep("1. Scanning for confidential trade secrets & redactions...");
 
     const formData = new FormData();
-    formData.append("title", title);
+    formData.append("title", title || "Untitled Marketing Copy");
     if (selectedFile) {
       formData.append("file", selectedFile);
     } else {
@@ -94,17 +115,17 @@ export default function ReviewStudioPage() {
     try {
       setTimeout(() => {
         setStepPercent(45);
-        setActiveStep("2. Checking brand rules & banned names...");
+        setActiveStep("2. Evaluating against active Brand Rulebook...");
       }, 300);
 
       setTimeout(() => {
         setStepPercent(70);
-        setActiveStep("3. Verifying numbers & evidence dates against Fact Vault...");
+        setActiveStep("3. Cross-referencing statistics against Approved Fact Vault...");
       }, 700);
 
       setTimeout(() => {
         setStepPercent(90);
-        setActiveStep("4. Checking citations & building 1-click fixes...");
+        setActiveStep("4. Locking creative intent & generating surgical fixes...");
       }, 1100);
 
       const result = await api.submitReview(formData);
@@ -123,57 +144,70 @@ export default function ReviewStudioPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto py-2">
       {/* Friendly Page Header with Stepper */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="text-xs font-bold text-[#C87539] uppercase tracking-wider">
-              Step 1 of 3: Check Your Content
-            </span>
-            <h1 className="text-3xl font-extrabold tracking-tight text-[#382A20] mt-0.5">
-              Instant Brand & Fact Checker
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFF0E2] text-[#C87539] border border-[#F5A66B]/30 uppercase tracking-wide">
+                Live Brand & Fact Compiler
+              </span>
+              <span className="text-xs text-[#8A7567] font-medium">Submitting as: <strong>{submitterName}</strong> ({submitterRole.replace("_", " ")})</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#382A20]">
+              Content Review & Brand Guardian
             </h1>
-            <p className="text-sm text-[#8A7567] mt-1.5 leading-relaxed">
-              Paste your marketing post, newsletter, or document. CANON checks it in seconds against your brand rules and verified company facts.
+            <p className="text-sm text-[#8A7567] mt-1 leading-relaxed">
+              Paste your marketing post, newsletter, or document. Evaluated in seconds against official brand rules and verified company facts.
             </p>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="badge-clean flex items-center gap-1.5 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Local AI Engine Ready
-            </span>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/guide"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#FFF9F3] text-[#C87539] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span>How to Use Guide</span>
+            </Link>
           </div>
         </div>
 
         {/* Visual Progress Stepper for Non-Technical Users */}
-        <div className="mt-6 grid grid-cols-3 gap-2 p-1.5 rounded-xl bg-[#FFF0E2]/60 border border-[#F1E1D4] text-xs">
+        <div className="mt-5 grid grid-cols-3 gap-2 p-1.5 rounded-xl bg-[#FFF0E2]/60 border border-[#F1E1D4] text-xs">
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white shadow-2xs font-bold text-[#C87539]">
             <span className="w-5 h-5 rounded-full bg-[#C87539] text-white flex items-center justify-center text-[10px]">1</span>
-            <span>Paste Content</span>
+            <span>Paste / Upload Draft</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 text-[#8A7567] font-medium">
             <span className="w-5 h-5 rounded-full bg-[#E3D9CF] text-[#382A20] flex items-center justify-center text-[10px]">2</span>
-            <span>Instant Scan</span>
+            <span>Instant Rule Scan</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 text-[#8A7567] font-medium">
             <span className="w-5 h-5 rounded-full bg-[#E3D9CF] text-[#382A20] flex items-center justify-center text-[10px]">3</span>
-            <span>1-Click Fix & Approve</span>
+            <span>1-Click Fix & Sign-Off</span>
           </div>
         </div>
       </div>
 
-      {/* Quick-Pick Sample Scenarios (Great for Judges & First-Time Users) */}
-      <div className="editorial-card p-5 bg-white space-y-3">
-        <div className="flex items-center justify-between">
+      {/* Quick Prompt Starters */}
+      <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Wand2 className="w-4 h-4 text-[#C87539]" />
             <span className="text-xs font-bold text-[#382A20] uppercase tracking-wider">
-              Quick Test: Click Any Sample Post to Try
+              Test Scenarios: Click to Test Specific Rules
             </span>
           </div>
-          <span className="text-[11px] text-[#8A7567]">Click to auto-fill</span>
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="text-xs text-[#B42318] hover:underline font-bold flex items-center gap-1 self-start sm:self-auto"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear & Write My Own Real Copy</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -207,16 +241,16 @@ export default function ReviewStudioPage() {
       </div>
 
       {/* The Content Input Box */}
-      <div className="editorial-card p-6 bg-white space-y-4 shadow-sm">
+      <div className="editorial-card p-6 bg-white border border-[#F1E1D4] space-y-4 shadow-xs">
         <div>
           <label className="text-xs font-bold text-[#382A20] uppercase tracking-wider block mb-1.5">
-            Content Title / Headline
+            Content Title / Campaign Headline
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. New Product Launch Blog Post"
+            placeholder="e.g. Q3 Product Launch Press Release"
             className="editorial-input w-full p-3 text-sm font-semibold"
           />
         </div>
@@ -224,7 +258,7 @@ export default function ReviewStudioPage() {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-bold text-[#382A20] uppercase tracking-wider">
-              Draft Text
+              Draft Text Copy
             </label>
             <span className="text-xs text-[#8A7567]">
               {contentText.split(/\s+/).filter(Boolean).length} words · {contentText.length} characters
@@ -233,35 +267,50 @@ export default function ReviewStudioPage() {
           <textarea
             value={contentText}
             onChange={(e) => setContentText(e.target.value)}
-            placeholder="Type or paste your content here..."
+            placeholder="Paste your real marketing article, ad text, or product copy here..."
             className="editorial-input w-full h-40 p-3.5 text-sm leading-relaxed"
           />
         </div>
 
         {/* Or File Upload Box */}
-        <div className="p-4 rounded-xl border-2 border-dashed border-[#F1E1D4] bg-[#FFF9F3]/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-4 rounded-xl border-2 border-dashed border-[#F1E1D4] bg-[#FFF9F3]/50 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#FFF0E2] flex items-center justify-center text-[#C87539] shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#FFF0E2] flex items-center justify-center text-[#C87539] shrink-0">
               <Upload className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-bold text-[#382A20]">Or Upload a Document (PDF / Word DOCX / Text)</div>
+              <div className="text-xs font-bold text-[#382A20]">
+                {selectedFile ? `Selected: ${selectedFile.name}` : "Or Upload a Document (PDF / Word DOCX / Text)"}
+              </div>
               <div className="text-[11px] text-[#8A7567]">
-                We safely parse text directly on this computer. No files leave your device.
+                {selectedFile
+                  ? `${(selectedFile.size / 1024).toFixed(1)} KB • Ready for extraction`
+                  : "We safely parse text directly on this computer. No files leave your device."}
               </div>
             </div>
           </div>
-          <input
-            type="file"
-            accept=".pdf,.docx,.txt"
-            onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                setSelectedFile(e.target.files[0]);
-                setTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ""));
-              }
-            }}
-            className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#FFF0E2] file:text-[#C87539] hover:file:bg-[#fce5cf] cursor-pointer"
-          />
+          <div className="flex items-center gap-2">
+            {selectedFile && (
+              <button
+                type="button"
+                onClick={() => setSelectedFile(null)}
+                className="text-xs text-[#B42318] hover:underline px-2 py-1"
+              >
+                Remove
+              </button>
+            )}
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setSelectedFile(e.target.files[0]);
+                  setTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ""));
+                }
+              }}
+              className="text-xs file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#FFF0E2] file:text-[#C87539] hover:file:bg-[#fce5cf] cursor-pointer"
+            />
+          </div>
         </div>
 
         {/* Big Action Check Button */}
@@ -291,7 +340,7 @@ export default function ReviewStudioPage() {
               type="button"
               onClick={handleRunReview}
               disabled={reviewing || (!contentText.trim() && !selectedFile)}
-              className="btn-primary w-full sm:w-auto px-8 py-3 text-sm font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="btn-primary w-full sm:w-auto px-8 py-3 text-sm font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm hover:shadow-md"
             >
               <Sparkles className="w-4 h-4" />
               <span>{reviewing ? "Checking Brand & Facts..." : "Run Brand Review Pipeline"}</span>
@@ -302,10 +351,10 @@ export default function ReviewStudioPage() {
 
       {/* Instant Result Summary Card (Shown immediately upon check) */}
       {reviewResult && (
-        <div className="editorial-card p-6 bg-white border-l-4 border-l-[#C87539] space-y-5 animate-in fade-in duration-300">
+        <div className="editorial-card p-6 bg-white border border-[#F1E1D4] border-l-4 border-l-[#C87539] space-y-5 animate-in fade-in duration-300 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#F1E1D4]">
             <div>
-              <div className="text-xs font-bold text-[#8A7567] uppercase">Check Complete</div>
+              <div className="text-xs font-bold text-[#8A7567] uppercase">Review Complete</div>
               <h2 className="text-xl font-extrabold text-[#382A20] mt-0.5">
                 {reviewResult.blocking_findings_count > 0 ? (
                   <span className="text-[#B42318] flex items-center gap-2">
@@ -315,7 +364,7 @@ export default function ReviewStudioPage() {
                 ) : (
                   <span className="text-[#027A48] flex items-center gap-2">
                     <CheckCircle2 className="w-6 h-6" />
-                    <span>Great Job! Content is Compliant and Ready for Review</span>
+                    <span>Great Job! Content is Compliant and Ready for Approver Sign-Off</span>
                   </span>
                 )}
               </h2>
@@ -324,7 +373,7 @@ export default function ReviewStudioPage() {
             <button
               type="button"
               onClick={() => router.push("/findings")}
-              className="btn-primary px-5 py-2.5 text-xs flex items-center gap-1.5 shrink-0"
+              className="btn-primary px-5 py-2.5 text-xs font-bold flex items-center gap-1.5 shrink-0"
             >
               <span>Inspect Findings & Apply Fixes</span>
               <ArrowRight className="w-4 h-4" />
@@ -335,7 +384,7 @@ export default function ReviewStudioPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div className="p-3.5 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4]">
               <span className="text-[11px] font-bold text-[#8A7567] uppercase block">Rule Violations</span>
-              <span className="text-xl font-bold text-[#B42318] block mt-1">
+              <span className="text-2xl font-bold text-[#B42318] block mt-1">
                 {reviewResult.blocking_findings_count} Blocking
               </span>
               <span className="text-[11px] text-[#8A7567] mt-0.5 block">
@@ -345,7 +394,7 @@ export default function ReviewStudioPage() {
 
             <div className="p-3.5 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4]">
               <span className="text-[11px] font-bold text-[#8A7567] uppercase block">Claim Evidence</span>
-              <span className="text-xl font-bold text-[#C87539] block mt-1">
+              <span className="text-2xl font-bold text-[#C87539] block mt-1">
                 {reviewResult.claims.filter((c) => c.status !== "SUPPORTED").length} Needs Proof
               </span>
               <span className="text-[11px] text-[#8A7567] mt-0.5 block">
@@ -360,7 +409,7 @@ export default function ReviewStudioPage() {
                 <span>Call to Action Intact</span>
               </span>
               <span className="text-[11px] text-[#8A7567] mt-0.5 block">
-                Your message & audience remain unchanged
+                Your creative voice remains unchanged
               </span>
             </div>
           </div>
@@ -370,7 +419,7 @@ export default function ReviewStudioPage() {
             <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-[#382A20]">
                 <span>✨ 1-Click Suggested Fix Preview (Tracked Changes)</span>
-                <span className="text-[#027A48]">Surgical Minimal Edit</span>
+                <span className="text-[#027A48] font-bold">Surgical Minimal Edit</span>
               </div>
               <div
                 className="text-xs leading-relaxed text-[#382A20] font-sans"
