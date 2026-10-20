@@ -122,19 +122,24 @@ export default function FactsPage() {
 
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFF0E2] text-[#C87539] border border-[#F5A66B]/30 uppercase tracking-wide">
-              Official Knowledge Vault
-            </span>
-            <span className="text-xs text-[#8A7567] font-medium">{facts.length} Verified Claims</span>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden border border-[#F5A66B]/40 shadow-xs shrink-0">
+            <img src="/mascot.jpg" alt="Archie" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#382A20]">
-            Approved Fact Vault & Claim Ledger
-          </h1>
-          <p className="text-sm text-[#8A7567] mt-1">
-            Every statistic, uptime guarantee, and customer benchmark certified by department heads.
-          </p>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFF0E2] text-[#C87539] border border-[#F5A66B]/30 uppercase tracking-wide">
+                🏦 Verified True Facts
+              </span>
+              <span className="text-xs text-[#8A7567] font-medium">{facts.length} Verified Claims</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#382A20]">
+              The Approved Fact Vault
+            </h1>
+            <p className="text-sm text-[#8A7567] mt-0.5">
+              The sacred collection of real numbers, customer counts, and uptime promises approved by company leaders.
+            </p>
+          </div>
         </div>
 
         <button

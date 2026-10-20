@@ -111,22 +111,27 @@ export default function AuditTrailPage() {
       </div>
 
       {/* Non-Technical Explanatory Card */}
-      <div className="p-5 rounded-2xl bg-white border border-[#F1E1D4] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#FFF0E2] flex items-center justify-center text-[#C87539] shrink-0 mt-0.5">
-            <Lightbulb className="w-5 h-5" />
+      <div className="p-5 rounded-3xl bg-white border border-[#F1E1D4] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden border border-[#F5A66B]/40 shadow-xs shrink-0">
+            <img src="/seal.jpg" alt="Golden Seal Ledger" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-[#382A20]">
-              What does "Tamper-Evident" mean for non-technical users?
-            </h2>
-            <p className="text-xs text-[#8A7567] leading-relaxed mt-0.5">
-              Think of each approval as an entry written in permanent ink in an unbroken chain. If anyone ever tries to alter past approvals or delete a record, the cryptographic seal breaks immediately.
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-extrabold text-[#382A20]">
+                What is this Tamper-Proof Golden Ledger?
+              </h2>
+              <span className="text-[10px] bg-[#EDFDF5] text-[#027A48] font-bold px-2 py-0.5 rounded-full border border-[#A6F4C5]">
+                🔒 Permanent Digital Ink
+              </span>
+            </div>
+            <p className="text-xs text-[#8A7567] leading-relaxed mt-1 max-w-xl">
+              Imagine every brand rule and approved story is stamped with permanent golden ink into an unbroken chain of trust. If someone tries to secretly erase or alter an approved post, the chain detects it instantly!
             </p>
           </div>
         </div>
 
-        <div className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4]">
+        <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[#FFF9F3] border border-[#F1E1D4]">
           <Lock className="w-4 h-4 text-[#C87539]" />
           <span className="text-xs font-bold text-[#382A20]">Append-Only SHA-256 Ledger</span>
         </div>
@@ -135,7 +140,7 @@ export default function AuditTrailPage() {
       {/* Verification Results Seal Banner */}
       {verificationResult && (
         <div
-          className={`p-6 rounded-2xl border-2 transition-all shadow-md ${
+          className={`p-6 rounded-3xl border-2 transition-all shadow-md ${
             verificationResult.is_valid
               ? "bg-gradient-to-r from-[#EDFDF5] to-white border-[#A6F4C5]"
               : "bg-gradient-to-r from-[#FEEBEA] to-white border-[#FECDCA]"
@@ -143,18 +148,8 @@ export default function AuditTrailPage() {
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                  verificationResult.is_valid
-                    ? "bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]"
-                    : "bg-[#FEEBEA] text-[#B42318] border border-[#FECDCA]"
-                }`}
-              >
-                {verificationResult.is_valid ? (
-                  <CheckCircle2 className="w-7 h-7" />
-                ) : (
-                  <AlertTriangle className="w-7 h-7" />
-                )}
+              <div className="w-14 h-14 rounded-2xl overflow-hidden border border-[#A6F4C5] shadow-xs shrink-0">
+                <img src="/seal.jpg" alt="Golden Seal" className="w-full h-full object-cover" />
               </div>
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#027A48]">

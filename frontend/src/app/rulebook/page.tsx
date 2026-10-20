@@ -136,19 +136,24 @@ export default function RulebookPage() {
     <div className="space-y-8 max-w-6xl mx-auto">
       {/* Friendly Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFF0E2] text-[#C87539] border border-[#F5A66B]/30 uppercase tracking-wide">
-              Official Brand Rules
-            </span>
-            <span className="text-xs text-[#8A7567] font-medium">Version {rulebook?.version || "1.0.0"}</span>
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden border border-[#F5A66B]/40 shadow-xs shrink-0">
+            <img src="/mascot.jpg" alt="Archie" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#382A20]">
-            Brand Rulebook & Compiler Studio
-          </h1>
-          <p className="text-sm text-[#8A7567] mt-1">
-            Every rule here has an exact citation to your company's guidelines. No AI hallucinated rules.
-          </p>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFF0E2] text-[#C87539] border border-[#F5A66B]/30 uppercase tracking-wide">
+                📚 Archie&apos;s Rulebook
+              </span>
+              <span className="text-xs text-[#8A7567] font-medium">Version {rulebook?.version || "1.0.0"}</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#382A20]">
+              Company Brand Rules & Guidelines
+            </h1>
+            <p className="text-sm text-[#8A7567] mt-0.5">
+              Every rule here quotes official company guidebooks. Archie will never make up rules or scold you without real evidence!
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

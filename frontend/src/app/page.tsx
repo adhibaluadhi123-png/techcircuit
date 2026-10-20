@@ -16,7 +16,11 @@ import {
   HelpCircle,
   KeyRound,
   Sparkles,
-  Award
+  Award,
+  Smile,
+  Wand2,
+  Lock,
+  Heart
 } from "lucide-react";
 import { api, GovernanceInsights, Rulebook, Fact } from "@/lib/api";
 
@@ -41,57 +45,66 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto py-2">
-      {/* Editorial Header Banner */}
-      <div className="editorial-card p-8 bg-gradient-to-r from-white via-[#FFF9F3] to-[#FFF0E2] border-[#F1E1D4] relative overflow-hidden shadow-xs">
-        <div className="max-w-2xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF0E2] text-[#C87539] text-xs font-bold border border-[#F5A66B]/30 uppercase tracking-wide">
+      {/* Friendly Hero Banner with Archie the Mascot */}
+      <div className="editorial-card p-8 bg-gradient-to-r from-white via-[#FFF9F3] to-[#FFF0E2] border-[#F1E1D4] relative overflow-hidden shadow-xs rounded-3xl flex flex-col md:flex-row items-center justify-between gap-8">
+        <div className="max-w-xl space-y-3.5 text-center md:text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF0E2] text-[#C87539] text-xs font-black border border-[#F5A66B]/30 uppercase tracking-wide">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Open-Source Brand Governance Platform</span>
+            <span>The Friendly Brand Guardian</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#382A20]">
-            Automated guardrails for your brand identity.
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-[#382A20]">
+            Spell-Check for Your Brand Promises! 🦉
           </h1>
           <p className="text-sm leading-relaxed text-[#8A7567]">
-            CANON converts brand guidelines into testable rules, checks promotional claims against certified evidence, verifies all citations, and preserves creator intent.
+            Meet <strong>Archie the Owl</strong>! CANON checks your marketing posts, newsletters, and stories to make sure you never accidentally say the wrong product name or quote outdated numbers. Easy enough for a child to use!
           </p>
-          <div className="pt-3 flex flex-wrap items-center gap-3">
+          <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3">
             <Link
               href="/review"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-extrabold transition-all shadow-sm hover:shadow-md"
             >
               <FileCheck2 className="w-4 h-4" />
-              <span>Review Content Draft →</span>
+              <span>Check My Story Now (It's Fun!) →</span>
             </Link>
             <Link
               href="/guide"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-[#FFF9F3] text-[#382A20] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white hover:bg-[#FFF9F3] text-[#382A20] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
             >
               <HelpCircle className="w-4 h-4 text-[#C87539]" />
-              <span>How to Use Guide</span>
+              <span>How It Works (Easy Guide)</span>
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-[#FFF9F3] text-[#8A7567] hover:text-[#382A20] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
+              className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-white hover:bg-[#FFF9F3] text-[#8A7567] hover:text-[#382A20] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
             >
               <KeyRound className="w-4 h-4 text-[#C87539]" />
-              <span>Switch Account / Sign In</span>
+              <span>Log In / Switch Account</span>
             </Link>
           </div>
         </div>
+
+        {/* Mascot Photo */}
+        <div className="w-44 h-44 rounded-3xl overflow-hidden shadow-lg border-4 border-white shrink-0 relative bg-white">
+          <img
+            src="/mascot.jpg"
+            alt="Archie the Brand Owl"
+            className="w-full h-full object-cover"
+          />
+        </div>
       </div>
 
-      {/* Core Architectural Invariant Callout */}
-      <div className="p-5 rounded-2xl bg-[#FFF0E2] border border-[#F5A66B]/40 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
+      {/* The 3 Traffic Light Core Guarantee */}
+      <div className="p-5 rounded-3xl bg-[#FFF0E2] border border-[#F5A66B]/40 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
         <div className="flex items-start md:items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-[#C87539] text-white flex items-center justify-center shrink-0 shadow-xs">
-            <ShieldCheck className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-2xl bg-[#C87539] text-white flex items-center justify-center shrink-0 shadow-xs text-xl">
+            🚦
           </div>
           <div>
-            <h2 className="text-sm font-bold text-[#382A20]">
-              The Core Invariant: NO CITATION, NO BLOCKING FLAG
+            <h2 className="text-sm font-extrabold text-[#382A20]">
+              Our Promise: NO CITATION, NO BLOCKING FLAG
             </h2>
-            <p className="text-xs text-[#8A7567] mt-0.5">
-              Unverified AI findings and missing quotes are strictly demoted to non-blocking Advisories. AI cannot block your deadlines without citing verified brand guidelines.
+            <p className="text-xs text-[#8A7567] mt-0.5 leading-relaxed">
+              Computers cannot be bossy. If CANON cannot prove the exact sentence in your brand rulebook, it will never block your deadline. Only friendly suggestions allowed!
             </p>
           </div>
         </div>
@@ -99,157 +112,153 @@ export default function OverviewPage() {
           href="/audit"
           className="text-xs font-bold text-[#C87539] hover:underline shrink-0 flex items-center gap-1.5 self-start md:self-auto"
         >
-          <span>Verify Tamper-Proof Ledger</span>
+          <span>See the Magic Digital Seal</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
 
-      {/* Metrics Grid */}
+      {/* Cheerful Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-2xs">
+        <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-2xs rounded-3xl">
           <div className="flex items-center justify-between text-[#8A7567] text-xs font-bold">
-            <span className="uppercase tracking-wider">Active Rules</span>
+            <span className="uppercase tracking-wider">Active Rules 📜</span>
             <BookOpen className="w-4 h-4 text-[#F5A66B]" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-[#382A20]">
+            <span className="text-3xl font-black text-[#382A20]">
               {rulebook ? rulebook.rules.length : 5}
             </span>
             <span className="text-xs font-bold text-[#027A48]">v{rulebook?.version || "1.0.0"}</span>
           </div>
-          <p className="mt-1 text-[11px] text-[#8A7567]">Compiled & verified atomic rules</p>
+          <p className="mt-1 text-[11px] text-[#8A7567]">Brand promises we watch over</p>
         </div>
 
-        <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-2xs">
+        <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-2xs rounded-3xl">
           <div className="flex items-center justify-between text-[#8A7567] text-xs font-bold">
-            <span className="uppercase tracking-wider">Approved Facts</span>
+            <span className="uppercase tracking-wider">True Facts 📊</span>
             <Database className="w-4 h-4 text-[#F5A66B]" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-[#382A20]">{facts.length || 4}</span>
-            <span className="text-xs font-bold text-[#B42318]">1 Expired</span>
+            <span className="text-3xl font-black text-[#382A20]">{facts.length || 4}</span>
+            <span className="text-xs font-bold text-[#B42318]">1 Alarm Set</span>
           </div>
-          <p className="mt-1 text-[11px] text-[#8A7567]">Fact vault with evidence expiry dates</p>
+          <p className="mt-1 text-[11px] text-[#8A7567]">Verified statistics in our vault</p>
         </div>
 
-        <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-2xs">
+        <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-2xs rounded-3xl">
           <div className="flex items-center justify-between text-[#8A7567] text-xs font-bold">
-            <span className="uppercase tracking-wider">Reviews Run</span>
+            <span className="uppercase tracking-wider">Stories Checked 📝</span>
             <FileCheck2 className="w-4 h-4 text-[#F5A66B]" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-[#382A20]">
+            <span className="text-3xl font-black text-[#382A20]">
               {insights ? insights.total_reviews : 1}
             </span>
-            <span className="text-xs font-bold text-[#027A48]">100% cited</span>
+            <span className="text-xs font-bold text-[#027A48]">100% Honest</span>
           </div>
-          <p className="mt-1 text-[11px] text-[#8A7567]">Tracked on tamper-evident log</p>
+          <p className="mt-1 text-[11px] text-[#8A7567]">Protected on our tamper ledger</p>
         </div>
 
-        <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-2xs">
+        <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-2xs rounded-3xl">
           <div className="flex items-center justify-between text-[#8A7567] text-xs font-bold">
-            <span className="uppercase tracking-wider">Governance Loop</span>
+            <span className="uppercase tracking-wider">Happy Fixes 🪄</span>
             <TrendingUp className="w-4 h-4 text-[#F5A66B]" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-[#382A20]">
+            <span className="text-3xl font-black text-[#382A20]">
               {insights?.proposed_amendments?.length || 1}
             </span>
-            <span className="text-xs font-bold text-[#C87539]">Proposal</span>
+            <span className="text-xs font-bold text-[#C87539]">Smart Tip</span>
           </div>
-          <p className="mt-1 text-[11px] text-[#8A7567]">Auto-drafted rule amendment</p>
+          <p className="mt-1 text-[11px] text-[#8A7567]">Auto-updating our rulebook</p>
         </div>
       </div>
 
-      {/* Two-Column Feature Showcase */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Five Signature Mechanisms */}
-        <div className="editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs">
-          <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F1E1D4]">
-            <h2 className="text-base font-bold text-[#382A20]">
-              CANON's 5 Signature Mechanisms
-            </h2>
-            <span className="text-[10px] font-bold uppercase text-[#027A48]">Enterprise Grade</span>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#FFF0E2] text-[#C87539] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                1
+      {/* Two-Column Showcase with Cheerful Team & Live Rules */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {/* Left: Team Illustration Card */}
+        <div className="editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs rounded-3xl flex flex-col justify-between space-y-4">
+          <div>
+            <div className="flex items-center justify-between pb-2 border-b border-[#F1E1D4] mb-3">
+              <h2 className="text-base font-extrabold text-[#382A20] flex items-center gap-2">
+                <span>The 5 Superpowers of CANON</span>
+              </h2>
+              <span className="text-[10px] font-bold text-[#027A48] bg-[#EDFDF5] px-2 py-0.5 rounded-full">
+                Safe & Simple
               </span>
-              <div>
-                <h3 className="text-xs font-bold text-[#382A20]">Guideline Compiler</h3>
-                <p className="text-[11px] text-[#8A7567] mt-0.5 leading-relaxed">
-                  Converts static PDFs into testable atomic rules paired with pass/fail unit test examples.
-                </p>
-              </div>
             </div>
 
-            <div className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#FFF0E2] text-[#C87539] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                2
-              </span>
-              <div>
-                <h3 className="text-xs font-bold text-[#382A20]">Claim Ledger with Expiry</h3>
-                <p className="text-[11px] text-[#8A7567] mt-0.5 leading-relaxed">
-                  Binds claims to approved facts. Catches expired benchmarks and unsupported superlatives.
-                </p>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-[#FFF9F3]">
+                <span className="text-xl">📜</span>
+                <div>
+                  <h3 className="text-xs font-extrabold text-[#382A20]">1. Rulebook Detective</h3>
+                  <p className="text-[11px] text-[#8A7567]">
+                    Reads company guidelines and creates automatic pass/fail tests.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#FFF0E2] text-[#C87539] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                3
-              </span>
-              <div>
-                <h3 className="text-xs font-bold text-[#382A20]">No Citation, No Flag</h3>
-                <p className="text-[11px] text-[#8A7567] mt-0.5 leading-relaxed">
-                  Independent Citation Verifier drops or demotes any unverified AI finding without a rule quote.
-                </p>
+              <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-[#FFF9F3]">
+                <span className="text-xl">⏰</span>
+                <div>
+                  <h3 className="text-xs font-extrabold text-[#382A20]">2. The Truth Alarm</h3>
+                  <p className="text-[11px] text-[#8A7567]">
+                    Stops you from accidentally bragging about old, expired statistics.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#FFF0E2] text-[#C87539] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                4
-              </span>
-              <div>
-                <h3 className="text-xs font-bold text-[#382A20]">Creator Intent Lock</h3>
-                <p className="text-[11px] text-[#8A7567] mt-0.5 leading-relaxed">
-                  Surgical tracked-change edits machine-checked to preserve call-to-action & core message.
-                </p>
+              <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-[#FFF9F3]">
+                <span className="text-xl">🛡️</span>
+                <div>
+                  <h3 className="text-xs font-extrabold text-[#382A20]">3. Friendly Referee</h3>
+                  <p className="text-[11px] text-[#8A7567]">
+                    Never blocks you unless it has an exact quotation from your official handbook.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#FFF0E2] text-[#C87539] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                5
-              </span>
-              <div>
-                <h3 className="text-xs font-bold text-[#382A20]">Governance Loop & Receipts</h3>
-                <p className="text-[11px] text-[#8A7567] mt-0.5 leading-relaxed">
-                  Overrides feed guideline amendments, and approvals issue signed cryptographic receipts.
-                </p>
+              <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-[#FFF9F3]">
+                <span className="text-xl">🪄</span>
+                <div>
+                  <h3 className="text-xs font-extrabold text-[#382A20]">4. 1-Click Magic Fix</h3>
+                  <p className="text-[11px] text-[#8A7567]">
+                    Swaps the forbidden words while keeping your story and voice 100% intact.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-[#FFF9F3]">
+                <span className="text-xl">🏅</span>
+                <div>
+                  <h3 className="text-xs font-extrabold text-[#382A20]">5. The Golden Seal</h3>
+                  <p className="text-[11px] text-[#8A7567]">
+                    A mathematical stamp proving nobody can secretly change your approved work.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Live Active Rules Quick Glance */}
-        <div className="editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs flex flex-col justify-between">
+        {/* Right: Golden Seal Preview & Active Rules */}
+        <div className="editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs flex flex-col justify-between rounded-3xl space-y-4">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#F1E1D4]">
-              <h2 className="text-base font-bold text-[#382A20]">
-                Active Rules Quick Inspector
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#F1E1D4]">
+              <h2 className="text-base font-extrabold text-[#382A20] flex items-center gap-2">
+                <span>Active Rules Explorer</span>
               </h2>
               <Link href="/rulebook" className="text-xs text-[#C87539] font-bold hover:underline">
                 View All Rules →
               </Link>
             </div>
+
             <div className="space-y-3">
-              {rulebook?.rules.slice(0, 4).map((rule) => (
+              {rulebook?.rules.slice(0, 3).map((rule) => (
                 <div
                   key={rule.id}
-                  className="p-3 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] flex items-start justify-between gap-3"
+                  className="p-3.5 rounded-2xl bg-[#FFF9F3] border border-[#F1E1D4] flex items-start justify-between gap-3"
                 >
                   <div>
                     <div className="flex items-center gap-2">
@@ -277,14 +286,17 @@ export default function OverviewPage() {
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-[#F1E1D4] flex items-center justify-between text-xs text-[#8A7567]">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Cpu className="w-3.5 h-3.5 text-[#C87539]" />
-              Inference: Qwen2.5 (100% Privacy Sovereignty)
-            </span>
-            <Link href="/settings" className="font-bold text-[#C87539] hover:underline">
-              Model Disclosures →
-            </Link>
+          {/* Golden Seal Thumbnail */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-[#FFF0E2] to-white border border-[#F5A66B]/30 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-xs shrink-0 bg-white">
+              <img src="/seal.jpg" alt="Golden Seal" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <div className="text-xs font-extrabold text-[#382A20]">100% Cryptographic Golden Seal</div>
+              <p className="text-[11px] text-[#8A7567] mt-0.5">
+                Every approved story gets a digital wax stamp anchored in our tamper-proof history chain.
+              </p>
+            </div>
           </div>
         </div>
       </div>

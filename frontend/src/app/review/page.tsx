@@ -145,34 +145,37 @@ export default function ReviewStudioPage() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto py-2">
-      {/* Friendly Page Header with Stepper */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFF0E2] text-[#C87539] border border-[#F5A66B]/30 uppercase tracking-wide">
-                Live Brand & Fact Compiler
-              </span>
-              <span className="text-xs text-[#8A7567] font-medium">Submitting as: <strong>{submitterName}</strong> ({submitterRole.replace("_", " ")})</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#382A20]">
-              Content Review & Brand Guardian
-            </h1>
-            <p className="text-sm text-[#8A7567] mt-1 leading-relaxed">
-              Paste your marketing post, newsletter, or document. Evaluated in seconds against official brand rules and verified company facts.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/guide"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#FFF9F3] text-[#C87539] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>How to Use Guide</span>
-            </Link>
-          </div>
+      {/* Friendly Page Header with Archie Mascot */}
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-[#FFF0E2] via-white to-[#FFF9F3] border border-[#F1E1D4] shadow-xs flex flex-col sm:flex-row items-center gap-6">
+        <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-sm shrink-0 border-2 border-white bg-white">
+          <img
+            src="/mascot.jpg"
+            alt="Archie the Owl"
+            className="w-full h-full object-cover"
+          />
         </div>
+        <div className="space-y-1 text-center sm:text-left flex-1">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#C87539] text-white uppercase tracking-wide">
+              The Promise Checker 🦉
+            </span>
+            <span className="text-xs text-[#8A7567]">Writing as: <strong className="text-[#382A20]">{submitterName}</strong> ({submitterRole.replace("_", " ")})</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-[#382A20]">
+            Check Your Marketing Post or Story!
+          </h1>
+          <p className="text-xs text-[#8A7567] leading-relaxed">
+            Write or paste your text below. Archie will check your names, promises, and numbers in seconds!
+          </p>
+        </div>
+        <Link
+          href="/guide"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white hover:bg-[#FFF9F3] text-[#C87539] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs shrink-0"
+        >
+          <HelpCircle className="w-4 h-4" />
+          <span>How to Use Guide</span>
+        </Link>
+      </div>
 
         {/* Visual Progress Stepper for Non-Technical Users */}
         <div className="mt-5 grid grid-cols-3 gap-2 p-1.5 rounded-xl bg-[#FFF0E2]/60 border border-[#F1E1D4] text-xs">
@@ -189,7 +192,6 @@ export default function ReviewStudioPage() {
             <span>1-Click Fix & Sign-Off</span>
           </div>
         </div>
-      </div>
 
       {/* Quick Prompt Starters */}
       <div className="editorial-card p-5 bg-white border border-[#F1E1D4] shadow-xs space-y-3">

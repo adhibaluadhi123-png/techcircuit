@@ -27,18 +27,18 @@ import {
 import { api, User as UserType } from "@/lib/api";
 
 const NAV_ITEMS = [
-  { name: "Overview", href: "/", icon: LayoutDashboard },
-  { name: "How to Use", href: "/guide", icon: HelpCircle },
-  { name: "Content Review", href: "/review", icon: FileCheck2 },
-  { name: "Review Findings", href: "/findings", icon: AlertCircle },
-  { name: "Approval Queue", href: "/approvals", icon: CheckSquare },
-  { name: "Brand Rulebook", href: "/rulebook", icon: BookOpen },
-  { name: "Approved Fact Vault", href: "/facts", icon: Database },
-  { name: "Asset Library", href: "/assets", icon: Palette },
-  { name: "Governance Insights", href: "/insights", icon: BarChart3 },
-  { name: "Audit Trail", href: "/audit", icon: ShieldCheck },
-  { name: "Account & Access", href: "/login", icon: KeyRound },
-  { name: "Settings & Disclosure", href: "/settings", icon: Cpu },
+  { name: "🏠 Overview", href: "/", icon: LayoutDashboard },
+  { name: "📖 How to Use (Guide)", href: "/guide", icon: HelpCircle },
+  { name: "✍️ Write & Check Stories", href: "/review", icon: FileCheck2 },
+  { name: "🔍 Review Findings", href: "/findings", icon: AlertCircle },
+  { name: "✅ Approval Stamp", href: "/approvals", icon: CheckSquare },
+  { name: "📚 Company Rules", href: "/rulebook", icon: BookOpen },
+  { name: "🏦 True Fact Vault", href: "/facts", icon: Database },
+  { name: "🎨 Photo & Logo Library", href: "/assets", icon: Palette },
+  { name: "📊 Progress Charts", href: "/insights", icon: BarChart3 },
+  { name: "📜 Golden Stamp Trail", href: "/audit", icon: ShieldCheck },
+  { name: "🔑 Sign In / Sign Up", href: "/login", icon: KeyRound },
+  { name: "⚙️ AI Brain Settings", href: "/settings", icon: Cpu },
 ];
 
 export function Sidebar() {
@@ -76,10 +76,10 @@ export function Sidebar() {
       {/* Mobile Top Header */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#FFFFFF] border-b border-[#F1E1D4]">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#C87539] flex items-center justify-center text-white font-bold text-sm tracking-wider shadow-sm">
-            C
+          <div className="w-8 h-8 rounded-lg overflow-hidden border border-[#F5A66B]/40 shadow-sm shrink-0">
+            <img src="/mascot.jpg" alt="Archie" className="w-full h-full object-cover" />
           </div>
-          <span className="font-semibold text-lg text-[#382A20]">CANON</span>
+          <span className="font-extrabold text-base text-[#382A20]">CANON 🦉</span>
         </div>
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -106,30 +106,41 @@ export function Sidebar() {
       >
         <div className="flex flex-col flex-1 overflow-y-auto">
           {/* Brand Logo & Tag */}
-          <div className="px-6 py-5 border-b border-[#F1E1D4]">
+          <div className="px-5 py-4 border-b border-[#F1E1D4]">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#F5A66B] to-[#C87539] flex items-center justify-center text-white font-bold text-base shadow-sm group-hover:scale-105 transition-transform">
-                C
+              <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-sm border border-[#F5A66B]/40 group-hover:scale-105 transition-transform shrink-0">
+                <img
+                  src="/mascot.jpg"
+                  alt="Archie the Brand Owl"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
-                <h1 className="text-base font-bold tracking-tight text-[#382A20]">CANON</h1>
-                <p className="text-[10px] font-bold text-[#8A7567] uppercase tracking-wider">
-                  Brand Governance Compiler
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-base font-extrabold tracking-tight text-[#382A20]">CANON</h1>
+                  <span className="text-[9px] bg-[#FFF0E2] text-[#C87539] font-black px-1.5 py-0.5 rounded-full border border-[#F5A66B]/30">
+                    🦉 ARCHIE
+                  </span>
+                </div>
+                <p className="text-[10px] font-bold text-[#8A7567] tracking-wide">
+                  Friendly Brand Helper
                 </p>
               </div>
             </Link>
 
             {/* Active Workspace Badge */}
-            <div className="mt-3.5 p-2.5 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4]">
+            <div className="mt-3 p-2.5 rounded-2xl bg-[#FFF9F3] border border-[#F1E1D4]">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-[#382A20]">ApexDynamics</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]">
-                  Active
+                <span className="font-extrabold text-[#382A20] flex items-center gap-1">
+                  <span>🏢</span> ApexDynamics
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]">
+                  🟢 Ready
                 </span>
               </div>
               <div className="mt-1 flex items-center gap-1.5 text-[10px] text-[#C87539] font-bold">
-                <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-                <span>NO CITATION, NO BLOCKING FLAG</span>
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-[#12B76A]" />
+                <span>Zero False Claims Guaranteed</span>
               </div>
             </div>
           </div>

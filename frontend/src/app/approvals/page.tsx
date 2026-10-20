@@ -120,41 +120,46 @@ export default function ApprovalsPage() {
       </div>
 
       {/* Explanatory Banner */}
-      <div className="p-5 rounded-2xl bg-white border border-[#F1E1D4] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#FFF0E2] flex items-center justify-center text-[#C87539] shrink-0 mt-0.5">
-            <Lightbulb className="w-5 h-5" />
+      <div className="p-5 rounded-3xl bg-white border border-[#F1E1D4] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden border border-[#F5A66B]/40 shadow-xs shrink-0">
+            <img src="/seal.jpg" alt="Golden Approval Seal" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-[#382A20]">
-              What happens when an Approver signs off?
-            </h2>
-            <p className="text-xs text-[#8A7567] leading-relaxed mt-0.5">
-              CANON seals the final approved copy with an unalterable digital certificate. If anyone edits even one character after your sign-off, the certificate automatically becomes invalid.
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-extrabold text-[#382A20]">
+                How does the Approval Stamp work?
+              </h2>
+              <span className="text-[10px] bg-[#EDFDF5] text-[#027A48] font-bold px-2 py-0.5 rounded-full border border-[#A6F4C5]">
+                🏅 100% Guaranteed Safe
+              </span>
+            </div>
+            <p className="text-xs text-[#8A7567] leading-relaxed mt-1 max-w-xl">
+              When a team leader stamps &quot;Approve&quot;, CANON creates an unbreakable golden digital wax seal. If anyone sneaks in even one changed letter afterwards, the seal cracks and turns red automatically!
             </p>
           </div>
         </div>
 
         {/* Status Counters */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="p-3 rounded-xl bg-[#FFF0E2] border border-[#F5A66B]/30 text-center min-w-[90px]">
-            <div className="text-lg font-bold text-[#C87539]">{pendingCount || 1}</div>
-            <div className="text-[10px] font-bold text-[#C87539] uppercase">Pending</div>
+          <div className="p-3 rounded-2xl bg-[#FFF0E2] border border-[#F5A66B]/30 text-center min-w-[90px]">
+            <div className="text-lg font-black text-[#C87539]">{pendingCount || 1}</div>
+            <div className="text-[10px] font-bold text-[#C87539] uppercase">⏳ Needs Stamp</div>
           </div>
-          <div className="p-3 rounded-xl bg-[#EDFDF5] border border-[#A6F4C5] text-center min-w-[90px]">
-            <div className="text-lg font-bold text-[#027A48]">{approvedCount}</div>
-            <div className="text-[10px] font-bold text-[#027A48] uppercase">Approved</div>
+          <div className="p-3 rounded-2xl bg-[#EDFDF5] border border-[#A6F4C5] text-center min-w-[90px]">
+            <div className="text-lg font-black text-[#027A48]">{approvedCount}</div>
+            <div className="text-[10px] font-bold text-[#027A48] uppercase">✨ Stamped & Ready</div>
           </div>
         </div>
       </div>
 
       {/* Cryptographic Certificate Modal / Banner when Issued */}
       {receiptResult && (
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-[#FFF9F3] via-white to-[#FFF0E2] border-2 border-[#C87539]/40 shadow-lg space-y-4 animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-[#FFF9F3] via-white to-[#FFF0E2] border-2 border-[#C87539]/40 shadow-lg space-y-4 animate-in fade-in zoom-in-95 duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#F1E1D4]">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#FFF0E2] border border-[#F5A66B]/40 flex items-center justify-center text-[#C87539] shadow-xs">
-                <Award className="w-7 h-7" />
+              <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-sm border border-[#F5A66B]/40 shrink-0">
+                <img src="/seal.jpg" alt="Golden Seal" className="w-full h-full object-cover" />
               </div>
               <div>
                 <span className="text-[10px] uppercase font-bold tracking-wider text-[#C87539]">Official Certificate Issued</span>
