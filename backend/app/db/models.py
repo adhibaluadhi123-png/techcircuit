@@ -1,0 +1,302 @@
+"""Database ORM Models for CANON Brand Governance Platform."""
+from datetime import datetime, timezone
+import uuid
+from sqlalchemy import (
+    Column, String, Text, Integer, Float, Boolean, DateTime,
+    ForeignKey, Enum, JSON
+)
+from sqlalchemy.orm import relationship
+from app.db.session import Base
+
+def generate_uuid() -> str:
+    return str(uuid.uuid4())
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Workspace(Base):
+    __tablename__ = "workspaces"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String(255), nullable=False)
+    slug = Column(String(100), unique=True, nullable=False)
+    created_at = Column(DateTime, default=utc_now)
+
+    users = relationship("User", back_populates="workspace", cascade="all, delete-orphan")
+    rulebooks = relationship("Rulebook", back_populates="workspace", cascade="all, delete-orphan")
+    facts = relationship("Fact", back_populates="workspace", cascade="all, delete-orphan")
+    submissions = relationship("ContentSubmission", back_populates="workspace", cascade="all, delete-orphan")
+    audit_events = relationship("AuditEvent", back_populates="workspace", cascade="all, delete-orphan")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    email = Column(String(255), unique=True, nullable=False)
+    full_name = Column(String(255), nullable=False)
+    role = Column(String(50), nullable=False, default="CREATOR")  # ADMIN, BRAND_MANAGER, CREATOR, AUTHORISED_REVIEWER, APPROVER
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    workspace = relationship("Workspace", back_populates="users")
+    submissions = relationship("ContentSubmission", back_populates="creator")
+    decisions = relationship("ApprovalDecision", back_populates="approver")
+
+
+class Rulebook(Base):
+    __tablename__ = "rulebooks"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    version = Column(String(50), nullable=False, default="1.0.0")
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(50), default="ACTIVE")  # DRAFT, ACTIVE, ARCHIVED
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    workspace = relationship("Workspace", back_populates="rulebooks")
+    rules = relationship("Rule", back_populates="rulebook", cascade="all, delete-orphan")
+
+
+class Rule(Base):
+    __tablename__ = "rules"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    rulebook_id = Column(String, ForeignKey("rulebooks.id"), nullable=False)
+    rule_code = Column(String(50), nullable=False, index=True)  # e.g. TONE-01, TERM-02, CLAIM-03
+    title = Column(String(255), nullable=False)
+    category = Column(String(100), nullable=False)  # Tone, Terminology, Claims, Visual, Accessibility
+    description = Column(Text, nullable=False)
+    source_document_id = Column(String, nullable=True)
+    source_version = Column(String(50), default="1.0")
+    source_quote = Column(Text, nullable=False)  # Non-negotiable: MUST match source text
+    source_section = Column(String(100), nullable=False)  # Page/section reference
+    severity = Column(String(50), default="BLOCKING")  # BLOCKING, WARNING, ADVISORY
+    enforcement_type = Column(String(50), default="DETERMINISTIC")  # DETERMINISTIC, SEMANTIC_AI
+    pass_example = Column(Text, nullable=True)
+    fail_example = Column(Text, nullable=True)
+    ambiguity_status = Column(String(50), default="CLEAR")  # CLEAR, AMBIGUOUS, CONFLICTING
+    status = Column(String(50), default="ACTIVE")  # ACTIVE, PROPOSED, DEPRECATED
+    created_at = Column(DateTime, default=utc_now)
+
+    rulebook = relationship("Rulebook", back_populates="rules")
+    test_cases = relationship("RuleTestCase", back_populates="rule", cascade="all, delete-orphan")
+    findings = relationship("Finding", back_populates="rule")
+
+
+class RuleTestCase(Base):
+    __tablename__ = "rule_test_cases"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    rule_id = Column(String, ForeignKey("rules.id"), nullable=False)
+    input_text = Column(Text, nullable=False)
+    expected_verdict = Column(String(50), nullable=False)  # PASS, FAIL
+    explanation = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    rule = relationship("Rule", back_populates="test_cases")
+
+
+class Fact(Base):
+    __tablename__ = "facts"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    fact_code = Column(String(50), nullable=False, index=True)  # e.g. FACT-REV-2025
+    subject = Column(String(255), nullable=False)
+    approved_statement = Column(Text, nullable=False)
+    normalized_value = Column(String(100), nullable=True)  # e.g. "99.98"
+    normalized_unit = Column(String(50), nullable=True)   # e.g. "%" or "users"
+    source_document = Column(String(255), nullable=False)
+    source_quote = Column(Text, nullable=False)
+    owner_name = Column(String(255), nullable=False)
+    owner_email = Column(String(255), nullable=False)
+    valid_from = Column(DateTime, default=utc_now)
+    valid_until = Column(DateTime, nullable=False)  # Expiry enforcement
+    status = Column(String(50), default="ACTIVE")   # ACTIVE, STALE, SUPERSEDED
+    created_at = Column(DateTime, default=utc_now)
+
+    workspace = relationship("Workspace", back_populates="facts")
+    claims = relationship("ExtractedClaim", back_populates="fact")
+
+
+class ContentSubmission(Base):
+    __tablename__ = "content_submissions"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    creator_id = Column(String, ForeignKey("users.id"), nullable=False)
+    title = Column(String(255), nullable=False)
+    content_type = Column(String(50), default="TEXT")  # TEXT, PDF, DOCX, IMAGE
+    original_filename = Column(String(255), nullable=True)
+    current_status = Column(String(50), default="DRAFT")  # DRAFT, SUBMITTED, CHANGES_REQUESTED, APPROVED, APPROVED_WITH_EXCEPTION, REJECTED
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    workspace = relationship("Workspace", back_populates="submissions")
+    creator = relationship("User", back_populates="submissions")
+    versions = relationship("ContentVersion", back_populates="submission", cascade="all, delete-orphan")
+    comments = relationship("Comment", back_populates="submission", cascade="all, delete-orphan")
+
+
+class ContentVersion(Base):
+    __tablename__ = "content_versions"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    submission_id = Column(String, ForeignKey("content_submissions.id"), nullable=False)
+    version_number = Column(Integer, default=1)
+    raw_text = Column(Text, nullable=False)
+    redacted_text = Column(Text, nullable=False)
+    content_hash = Column(String(64), nullable=False)  # SHA-256 of raw text
+    rulebook_version = Column(String(50), nullable=False, default="1.0.0")
+    created_at = Column(DateTime, default=utc_now)
+
+    submission = relationship("ContentSubmission", back_populates="versions")
+    intent_card = relationship("IntentCard", back_populates="content_version", uselist=False, cascade="all, delete-orphan")
+    claims = relationship("ExtractedClaim", back_populates="content_version", cascade="all, delete-orphan")
+    findings = relationship("Finding", back_populates="content_version", cascade="all, delete-orphan")
+    decisions = relationship("ApprovalDecision", back_populates="content_version", cascade="all, delete-orphan")
+    receipt = relationship("ReviewReceipt", back_populates="content_version", uselist=False, cascade="all, delete-orphan")
+
+
+class IntentCard(Base):
+    __tablename__ = "intent_cards"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    content_version_id = Column(String, ForeignKey("content_versions.id"), nullable=False)
+    purpose = Column(Text, nullable=False)
+    target_audience = Column(String(255), nullable=False)
+    call_to_action = Column(String(255), nullable=False)
+    must_keep_facts = Column(JSON, default=list)  # list of strings
+    product_names = Column(JSON, default=list)
+    numerical_claims = Column(JSON, default=list)
+    tone_constraints = Column(JSON, default=list)
+    preservation_status = Column(String(50), default="PASSED")  # PASSED, FAILED, NEEDS_REVIEW
+    created_at = Column(DateTime, default=utc_now)
+
+    content_version = relationship("ContentVersion", back_populates="intent_card")
+
+
+class ExtractedClaim(Base):
+    __tablename__ = "extracted_claims"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    content_version_id = Column(String, ForeignKey("content_versions.id"), nullable=False)
+    matched_fact_id = Column(String, ForeignKey("facts.id"), nullable=True)
+    claim_text = Column(Text, nullable=False)
+    claim_type = Column(String(50), default="FACTUAL")  # FACTUAL, NUMERICAL, SUPERLATIVE, COMPARATIVE
+    status = Column(String(50), default="NEEDS_PROOF")  # SUPPORTED, STALE, CONTRADICTED, UNSUPPORTED, NEEDS_PROOF
+    reasoning = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    content_version = relationship("ContentVersion", back_populates="claims")
+    fact = relationship("Fact", back_populates="claims")
+
+
+class Finding(Base):
+    __tablename__ = "findings"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    content_version_id = Column(String, ForeignKey("content_versions.id"), nullable=False)
+    rule_id = Column(String, ForeignKey("rules.id"), nullable=True)
+    category = Column(String(100), nullable=False)
+    severity = Column(String(50), nullable=False)  # BLOCKING, WARNING, ADVISORY
+    span_start = Column(Integer, default=0)
+    span_end = Column(Integer, default=0)
+    matched_text = Column(Text, nullable=False)
+    source_quote = Column(Text, nullable=True)
+    source_section = Column(String(100), nullable=True)
+    explanation = Column(Text, nullable=False)
+    evidence_status = Column(String(50), default="VERIFIED")  # VERIFIED, UNVERIFIED, MISSING
+    confidence_tier = Column(String(50), default="DETERMINISTIC")  # DETERMINISTIC, EVIDENCE_BACKED_AI, ADVISORY
+    suggested_correction = Column(Text, nullable=True)
+    verification_status = Column(String(50), default="VERIFIED")  # VERIFIED, REJECTED, DEMOTED
+    rejection_reason = Column(Text, nullable=True)
+    user_decision = Column(String(50), default="PENDING")  # PENDING, ACCEPTED, DISPUTED, OVERRIDDEN
+    created_at = Column(DateTime, default=utc_now)
+
+    content_version = relationship("ContentVersion", back_populates="findings")
+    rule = relationship("Rule", back_populates="findings")
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    submission_id = Column(String, ForeignKey("content_submissions.id"), nullable=False)
+    author_id = Column(String, ForeignKey("users.id"), nullable=False)
+    finding_id = Column(String, nullable=True)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=utc_now)
+
+    submission = relationship("ContentSubmission", back_populates="comments")
+    author = relationship("User")
+
+
+class ApprovalDecision(Base):
+    __tablename__ = "approval_decisions"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    content_version_id = Column(String, ForeignKey("content_versions.id"), nullable=False)
+    approver_id = Column(String, ForeignKey("users.id"), nullable=False)
+    decision = Column(String(50), nullable=False)  # APPROVED, APPROVED_WITH_EXCEPTION, REJECTED, CHANGES_REQUESTED
+    reason = Column(Text, nullable=True)
+    exception_category = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    content_version = relationship("ContentVersion", back_populates="decisions")
+    approver = relationship("User", back_populates="decisions")
+
+
+class ReviewReceipt(Base):
+    __tablename__ = "review_receipts"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    submission_id = Column(String, ForeignKey("content_submissions.id"), nullable=False)
+    content_version_id = Column(String, ForeignKey("content_versions.id"), nullable=False)
+    content_hash = Column(String(64), nullable=False)
+    rulebook_version = Column(String(50), nullable=False)
+    approver_id = Column(String, nullable=True)
+    final_verdict = Column(String(50), nullable=False)
+    verified_findings_count = Column(Integer, default=0)
+    advisory_count = Column(Integer, default=0)
+    model_disclosure = Column(JSON, default=dict)  # Model name, parameter count, provider, local status
+    issued_at = Column(DateTime, default=utc_now)
+
+    content_version = relationship("ContentVersion", back_populates="receipt")
+
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    event_type = Column(String(100), nullable=False)  # RULEBOOK_ACTIVATION, SUBMISSION_CREATED, REVIEW_EXECUTED, OVERRIDE_LOGGED, APPROVAL_GRANTED, EXCEPTION_GRANTED
+    actor_id = Column(String, nullable=False)
+    actor_role = Column(String(50), nullable=False)
+    payload_hash = Column(String(64), nullable=False)
+    prev_event_hash = Column(String(64), nullable=False)
+    current_event_hash = Column(String(64), nullable=False)
+    timestamp_str = Column(String(64), nullable=False)
+    details = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=utc_now)
+
+    workspace = relationship("Workspace", back_populates="audit_events")
+
+
+class ProposedAmendment(Base):
+    __tablename__ = "proposed_amendments"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    rule_id = Column(String, ForeignKey("rules.id"), nullable=False)
+    trigger_reason = Column(Text, nullable=False)
+    proposed_change = Column(Text, nullable=False)
+    status = Column(String(50), default="PROPOSED")  # PROPOSED, ACCEPTED, REJECTED
+    override_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=utc_now)
