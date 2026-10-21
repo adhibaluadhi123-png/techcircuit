@@ -47,64 +47,64 @@ export default function HowToUsePage() {
     {
       number: "1",
       emoji: "📜",
-      title: "Store Your Company Promises & Rules",
-      simpleTitle: "Step 1: The Rule Book & Memory Vault",
+      title: "Define Guidelines & Verified Claims",
+      simpleTitle: "Step 1: Policy Rulebook & Fact Vault",
       href: "/rulebook",
-      actionText: "Check the Rulebook 📜",
+      actionText: "Inspect Rulebook",
       image: "/seal.jpg",
       description:
-        "Just like a school has friendly playground rules, your company has brand rules! For example: 'Always use our real product name' and 'Never claim 100% uptime without proof'.",
-      childFriendlyTip: "🦉 Archie's Tip: If you quote a number (like 'we have 1,000 customers'), we check that it's verified so you never tell a fib!",
+        "Compile brand guidelines, product nomenclature constraints, and verified numerical facts into machine-readable deterministic evaluation rules.",
+      childFriendlyTip: "Compliance Protocol: Every numerical statement (customer counts, SLA uptime, revenue) is checked against active Fact Vault TTL timestamps.",
       bullets: [
-        "Rulebook Studio: Paste your official rules, and our owl turns them into testable checks.",
-        "Fact Vault: Keeps track of true numbers with an alarm clock so old numbers don't mislead people."
+        "Rulebook Studio: Compiles plain text guidelines into deterministic regex and semantic vector constraints.",
+        "Fact Vault: Enforces time-to-live expiration on figures so stale numbers never enter published marketing materials."
       ]
     },
     {
       number: "2",
       emoji: "✍️",
-      title: "Write Your Story or Marketing Post",
-      simpleTitle: "Step 2: Tell Your Story",
+      title: "Author Content with Creative Freedom",
+      simpleTitle: "Step 2: Content Creation & Submission",
       href: "/review",
-      actionText: "Try Writing Copy ✍️",
+      actionText: "Open Review Studio",
       image: "/team.jpg",
       description:
-        "Type or paste your blog post, ad, or newsletter. You can also upload a document file! You don't need any special skills—just write naturally.",
-      childFriendlyTip: "🦉 Archie's Tip: Don't worry about making mistakes! The Promise Checker reads it in 2 seconds and catches slips gently.",
+        "Draft marketing copy, press releases, or documentation. Content can be authored directly or uploaded as Markdown, text, or document files.",
+      childFriendlyTip: "Intent Lock Protocol: Preserves writer voice, headline structure, and CTA impact without generic LLM re-writing.",
       bullets: [
-        "Creative Intent Lock: We never delete your punchy call to action or main message.",
-        "Private & Safe: Your writing stays right inside this computer—never sent to public AI clouds."
+        "Creative Intent Lock: Surgically isolates only offending tokens without flattening style or voice.",
+        "Air-Gapped Local Inference: Processing runs 100% locally with zero external cloud transmission."
       ]
     },
     {
       number: "3",
-      emoji: "🪄",
-      title: "See the Friendly Traffic Light & 1-Click Fixes",
-      simpleTitle: "Step 3: Magic 1-Click Fix",
+      emoji: "🔍",
+      title: "Evaluate Risk Tiers & Apply Surgical Fixes",
+      simpleTitle: "Step 3: Deterministic Review & Diffing",
       href: "/findings",
-      actionText: "See Magic Fixes 🪄",
+      actionText: "View Review Findings",
       description:
-        "Instead of confusing computer codes, you get a simple traffic light: Green means perfect! Yellow gives you a friendly tip. Red tells you what to adjust before showing it to the world.",
-      childFriendlyTip: "🦉 Archie's Tip: See a red flag? Just click '⚡ 1-Click Magic Fix' and we swap the word for you instantly!",
+        "Instantly evaluate drafts across three transparent risk tiers. Green indicates passing compliance, Yellow signals stylistic advisory, and Red flags strict policy breaches.",
+      childFriendlyTip: "No Citation Guarantee: Blocking flags are mathematically forbidden unless paired with an exact brand rulebook quote.",
       bullets: [
-        "No Citation, No Flag: We never make up fake rules. Every flag quotes your company rulebook.",
-        "Tracked Changes: You can see the green and red highlights showing exactly what was fixed."
+        "Citation Transparency: Every flagged violation displays the exact paragraph and page from your official guide.",
+        "Tracked Changes: Inspect clear side-by-side diffs showing original claims vs. verified replacements."
       ]
     },
     {
       number: "4",
-      emoji: "🏅",
-      title: "Get Your Official Digital Gold Seal",
-      simpleTitle: "Step 4: The Golden Seal of Approval",
+      emoji: "📜",
+      title: "Cryptographic Seal & Immutable Audit Trail",
+      simpleTitle: "Step 4: Sign-off & HMAC Chaining",
       href: "/approvals",
-      actionText: "View Approvals Queue 🏅",
+      actionText: "Approvals Queue",
       image: "/seal.jpg",
       description:
-        "A real human brand lead looks over the finished story and awards an official Digital Certificate with a golden wax seal. Once stamped, nobody can secretly tamper with your story!",
-      childFriendlyTip: "🦉 Archie's Tip: Think of this like a shiny sticker on your best homework that proves it was inspected and passed with flying colors!",
+        "Authorized reviewers inspect passing drafts and issue an official cryptographic approval receipt containing an HMAC-SHA256 signature.",
+      childFriendlyTip: "Audit Trail Integrity: Receipts record reviewer identity, content checksum, and active rulebook revision in a tamper-proof chain.",
       bullets: [
-        "Cryptographic Receipt: A mathematical fingerprint proves this exact text was approved.",
-        "Tamper-Proof History: An unbroken chain of stamps that even administrators cannot erase."
+        "Cryptographic Receipt: Verifiable proof of compliance for executive and legal audits.",
+        "Immutable Audit Chain: Prevents unauthorized post-approval tampering across all published assets."
       ]
     }
   ];
@@ -134,47 +134,58 @@ export default function HowToUsePage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-10 py-4">
-      {/* Friendly Hero Banner with Mascot & Team */}
-      <div className="p-8 rounded-3xl bg-gradient-to-r from-[#FFF0E2] via-white to-[#FFF9F3] border border-[#F1E1D4] shadow-sm flex flex-col md:flex-row items-center justify-between gap-8">
+      {/* Executive Operations Banner */}
+      <div className="p-8 rounded-3xl bg-white border border-[#F1E1D4] shadow-xs flex flex-col md:flex-row items-center justify-between gap-8">
         <div className="space-y-3 max-w-lg">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-[#C87539] text-white shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Super Simple Guide for Everyone</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white shadow-2xs">
+            <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Platform Operations Handbook</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#382A20] tracking-tight">
-            How to Use CANON (Easy as 1, 2, 3!)
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1E1B4B] tracking-tight">
+            Operating Guide & Governance Protocols
           </h1>
-          <p className="text-sm text-[#8A7567] leading-relaxed">
-            Welcome! Whether you are 9 or 90, CANON is here to help you write awesome, honest, and brand-safe marketing copy without any technical headaches.
+          <p className="text-sm text-[#64748B] leading-relaxed">
+            End-to-end operational manual for creators, compliance reviewers, and brand managers using CANON to enforce deterministic brand safety.
           </p>
           <div className="pt-2 flex flex-wrap gap-3">
             <Link
-              href="/login?tab=register"
-              className="px-5 py-2.5 rounded-2xl bg-[#027A48] hover:bg-[#026038] text-white text-xs font-black transition-all shadow-sm"
-            >
-              ✨ Create Free Account
-            </Link>
-            <Link
               href="/review"
-              className="px-5 py-2.5 rounded-2xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-extrabold transition-all shadow-sm"
+              className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs"
             >
-              Try It in Review Studio →
+              Open Review Studio →
             </Link>
             <Link
-              href="/login"
-              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#FFF9F3] text-[#382A20] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
+              href="/rulebook"
+              className="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-[#1E1B4B] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
             >
-              Sign In / Switch
+              Policy Rulebook
             </Link>
           </div>
         </div>
 
-        <div className="w-44 h-44 rounded-3xl overflow-hidden shadow-lg border-4 border-white shrink-0 relative bg-white">
-          <img
-            src="/mascot.jpg"
-            alt="Archie the Brand Owl"
-            className="w-full h-full object-cover"
-          />
+        <div className="w-full md:w-64 p-5 rounded-2xl bg-slate-900 text-slate-300 border border-slate-800 space-y-3 font-mono text-xs">
+          <div className="text-emerald-400 font-bold font-sans text-xs flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" />
+            Governance Verification
+          </div>
+          <div className="space-y-1.5 text-[11px]">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Policy Citation:</span>
+              <span className="text-white">Required</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Fact TTL:</span>
+              <span className="text-emerald-400">Enforced</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Intent Lock:</span>
+              <span className="text-white">Active</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">HMAC-SHA256:</span>
+              <span className="text-emerald-400">Chained</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -264,8 +275,8 @@ export default function HowToUsePage() {
                   {step.description}
                 </p>
 
-                {/* Archie's Friendly Tip Box */}
-                <div className="p-3.5 rounded-2xl bg-[#FFF9F3] border border-[#F1E1D4] text-xs font-bold text-[#C87539]">
+                {/* Operator Compliance Guidance */}
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700">
                   {step.childFriendlyTip}
                 </div>
 

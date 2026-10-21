@@ -57,7 +57,7 @@ DEMO_RULES = [
     {
         "rule_code": "TERM-01",
         "title": "Prohibition of Deprecated 'Apex Cloud' Naming",
-        "category": "Terminology",
+        "category": "Brand Naming",
         "description": "The product was rebranded to 'Apex Core'. Use of 'Apex Cloud' is strictly prohibited in all external communications.",
         "source_quote": "Apex Core is our official enterprise engine. Under no circumstances should the deprecated name 'Apex Cloud' be used in marketing, sales, or public collateral.",
         "source_section": "Section 2.1: Product Naming Architecture (Page 6)",
@@ -69,9 +69,65 @@ DEMO_RULES = [
         "ambiguity_status": "CLEAR"
     },
     {
+        "rule_code": "NAME-01",
+        "title": "Master Brand Orthography & CamelCase Capitalization",
+        "category": "Brand Naming",
+        "description": "The master brand name is strictly written as ApexDynamics with capital A and capital D, without internal spaces. Lowercase or spaced spellings are prohibited.",
+        "source_quote": "The master brand name is strictly written as ApexDynamics with capital A and capital D, without internal spaces.",
+        "source_section": "Section 2.2: Orthography and Capitalization (Page 6)",
+        "severity": "BLOCKING",
+        "enforcement_type": "DETERMINISTIC",
+        "pass_example": "ApexDynamics powers next-generation enterprise hardware and telemetry.",
+        "fail_example": "apexdynamics delivers real-time cluster telemetry.",
+        "pattern": r"\b(?:apexdynamics|Apex\s+dynamics|apex\s+dynamics)\b",
+        "ambiguity_status": "CLEAR"
+    },
+    {
+        "rule_code": "TM-01",
+        "title": "Mandatory Trademark Symbol on First Reference",
+        "category": "Brand Naming & Trademarks",
+        "description": "ApexDynamics® must display the registered trademark symbol upon its initial occurrence in all product collateral and packaging.",
+        "source_quote": "ApexDynamics® and Apex Core™ must display their respective trademark designations upon their initial occurrence in all customer-facing collateral.",
+        "source_section": "Section 2.4: Trademark & Legal Nomenclature (Page 7)",
+        "severity": "WARNING",
+        "enforcement_type": "DETERMINISTIC",
+        "pass_example": "ApexDynamics® introduces next-generation computing architectures.",
+        "fail_example": "ApexDynamics without registered trademark symbol.",
+        "pattern": r"\bApexDynamics(?!\u00AE)\b",
+        "ambiguity_status": "CLEAR"
+    },
+    {
+        "rule_code": "LOGO-01",
+        "title": "Logo Clearspace & Isolation Perimeter",
+        "category": "Logo & Visual Identity",
+        "description": "The primary ApexDynamics mark must always be surrounded by an isolation boundary equal to the height of the primary monogram 'A'. Never crowd or place elements within this zone.",
+        "source_quote": "The primary ApexDynamics mark must always be surrounded by an isolation boundary equal to the height of the primary monogram 'A'. Never crowd or touch the logo border.",
+        "source_section": "Section 3.1: Logo Isolation & Clear Space Standards (Page 8)",
+        "severity": "BLOCKING",
+        "enforcement_type": "DETERMINISTIC",
+        "pass_example": "The official logo is placed with standard isolation clearance.",
+        "fail_example": "crowded logo with overlapping elements",
+        "pattern": r"\b(?:crowded\s+logo|unapproved\s+logo\s+variant|altered\s+logomark)\b",
+        "ambiguity_status": "CLEAR"
+    },
+    {
+        "rule_code": "LOGO-02",
+        "title": "Forbidden Logo Alterations & Distortions",
+        "category": "Logo & Visual Identity",
+        "description": "Logomarks must only appear in approved single-tone White, Onyx Black, or Apex Ochre. Custom drop shadows, bevels, or unapproved gradients on the logo are strictly prohibited.",
+        "source_quote": "Never apply drop shadows, 3D extrusions, or unauthorized color fills to the official logomark.",
+        "source_section": "Section 3.3: Forbidden Logo Alterations (Page 10)",
+        "severity": "BLOCKING",
+        "enforcement_type": "DETERMINISTIC",
+        "pass_example": "Monochrome logo printed on matte hardware packaging.",
+        "fail_example": "distorted logo with unapproved styling",
+        "pattern": r"\b(?:distorted\s+logo|recolored\s+logo|drop\s+shadow\s+on\s+logo)\b",
+        "ambiguity_status": "CLEAR"
+    },
+    {
         "rule_code": "TERM-02",
         "title": "Prohibition of Absolute '100% Uptime Guaranteed' Claims",
-        "category": "Claims",
+        "category": "Product Claims",
         "description": "Never claim 100% uptime or absolute reliability. Refer only to our certified 99.98% availability SLA.",
         "source_quote": "We never claim '100% uptime guaranteed'. All system reliability communications must cite our certified SLA of 99.98% availability.",
         "source_section": "Section 3.4: Reliability and Legal Guarantees (Page 11)",
@@ -83,23 +139,9 @@ DEMO_RULES = [
         "ambiguity_status": "CLEAR"
     },
     {
-        "rule_code": "TONE-01",
-        "title": "Measured, Authoritative Brand Voice",
-        "category": "Tone",
-        "description": "Communications must remain professional, measured, and objective. Avoid sensationalized clickbait, desperation, or multi-exclamation marks.",
-        "source_quote": "Our brand voice is confident, precise, and measured. Avoid sensationalized clickbait, multiple exclamation marks, or excessive emoji flourishes.",
-        "source_section": "Section 1.2: Brand Voice Principles (Page 3)",
-        "severity": "WARNING",
-        "enforcement_type": "SEMANTIC_AI",
-        "pass_example": "Our distributed infrastructure delivers consistent latency across global regions.",
-        "fail_example": "You WON'T BELIEVE how crazy fast our platform is!!! Don't miss out 🚀🔥",
-        "pattern": None,
-        "ambiguity_status": "CLEAR"
-    },
-    {
         "rule_code": "CLAIM-01",
         "title": "Substantiation of Comparative and Superlative Claims",
-        "category": "Claims",
+        "category": "Product Claims",
         "description": "Claims of being 'fastest' or 'industry-leading' require verifiable certified benchmark citations in footnote or accompanying text.",
         "source_quote": "Comparative claims including 'fastest' or 'market-leading' must have documented third-party benchmark proof before publication.",
         "source_section": "Section 4.3: Comparative Claims & Regulatory Compliance (Page 14)",
@@ -111,8 +153,22 @@ DEMO_RULES = [
         "ambiguity_status": "CLEAR"
     },
     {
+        "rule_code": "TONE-01",
+        "title": "Measured, Authoritative Brand Voice for Product Collateral",
+        "category": "Brand Voice",
+        "description": "Communications must remain professional, measured, and objective. Avoid sensationalized clickbait, desperation, or multi-exclamation marks.",
+        "source_quote": "Our brand voice is confident, precise, and measured. Avoid sensationalized clickbait, multiple exclamation marks, or excessive emoji flourishes.",
+        "source_section": "Section 1.2: Brand Voice Principles (Page 3)",
+        "severity": "WARNING",
+        "enforcement_type": "SEMANTIC_AI",
+        "pass_example": "Our distributed infrastructure delivers consistent latency across global regions.",
+        "fail_example": "You WON'T BELIEVE how crazy fast our platform is!!! Don't miss out 🚀🔥",
+        "pattern": None,
+        "ambiguity_status": "CLEAR"
+    },
+    {
         "rule_code": "AMBIG-01",
-        "title": "General Visual Quality Guideline (Demonstration Ambiguous Rule)",
+        "title": "General Brand Aesthetic & Premium Finish (Demonstration Ambiguous Rule)",
         "category": "Visual",
         "description": "Visual layouts should feel modern, clean, sleek, and high quality.",
         "source_quote": "Marketing headers and visuals should always appear sleek, clean, and high quality.",
@@ -127,6 +183,48 @@ DEMO_RULES = [
 ]
 
 DEMO_FACTS = [
+    {
+        "fact_code": "FACT-TM-7492019",
+        "subject": "Registered Trademark USPTO Reg #7,492,019",
+        "approved_statement": "ApexDynamics® is a registered trademark of ApexDynamics Corporation under USPTO Registration No. 7,492,019 in Class 9 (hardware/telemetry) and Class 42 (software services).",
+        "normalized_value": "7492019",
+        "normalized_unit": "USPTO Reg",
+        "source_document": "USPTO Certificate of Registration #7,492,019",
+        "source_quote": "Registration granted on the Principal Register for ApexDynamics® under Serial No. 97-482,109.",
+        "owner_name": "Marcus Vance",
+        "owner_email": "admin@apexdynamics.example",
+        "valid_from": datetime(2024, 1, 1, tzinfo=timezone.utc),
+        "valid_until": datetime(2034, 12, 31, tzinfo=timezone.utc),
+        "status": "ACTIVE"
+    },
+    {
+        "fact_code": "FACT-LOGO-SPEC",
+        "subject": "Official Vector Logo Specs & Clearspace",
+        "approved_statement": "The official horizontal logo lockup requires a 4:1 aspect ratio, minimum 24px digital display height, and minimum 12mm print packaging width with 1x 'A' monogram isolation boundary.",
+        "normalized_value": "4:1",
+        "normalized_unit": "ratio",
+        "source_document": "ApexDynamics Master Brand & Identity Guidelines v2.0",
+        "source_quote": "The primary mark requires 4:1 width-to-height ratio with isolation boundary equal to monogram height on all four sides.",
+        "owner_name": "Elena Rostova",
+        "owner_email": "manager@apexdynamics.example",
+        "valid_from": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        "valid_until": datetime(2028, 12, 31, tzinfo=timezone.utc),
+        "status": "ACTIVE"
+    },
+    {
+        "fact_code": "FACT-COLOR-CORE",
+        "subject": "Certified Brand Palette Hex Codes",
+        "approved_statement": "The certified master brand palette comprises Apex Ochre (#C87539), Warm Canvas (#FFF9F3), Midnight Brown (#382A20), and Apricot Glow (#F5A66B).",
+        "normalized_value": "#C87539",
+        "normalized_unit": "hex",
+        "source_document": "ApexDynamics Master Brand & Identity Guidelines v2.0",
+        "source_quote": "Apex Ochre #C87539 and Midnight Brown #382A20 constitute our primary brand signatures.",
+        "owner_name": "Elena Rostova",
+        "owner_email": "manager@apexdynamics.example",
+        "valid_from": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        "valid_until": datetime(2028, 12, 31, tzinfo=timezone.utc),
+        "status": "ACTIVE"
+    },
     {
         "fact_code": "FACT-SLA-2026",
         "subject": "System Availability SLA",
@@ -226,14 +324,25 @@ def seed_database(db: Session = None):
             rulebook = Rulebook(
                 workspace_id=WORKSPACE_ID,
                 version="1.0.0",
-                title="ApexDynamics Master Brand Guidelines v1.0",
-                description="Official compiled brand governance rulebook covering terminology, voice, and verified claims.",
+                title="ApexDynamics Master Brand & Identity Guidelines v1.0",
+                description="Official compiled brand governance rulebook covering product naming architecture, trademarks, logo clearspace, color palettes, and certified product specifications.",
                 status="ACTIVE"
             )
             db.add(rulebook)
             db.flush()
+        else:
+            rulebook.version = "1.0.0"
+            rulebook.title = "ApexDynamics Master Brand & Identity Guidelines v1.0"
+            rulebook.description = "Official compiled brand governance rulebook covering product naming architecture, trademarks, logo clearspace, color palettes, and certified product specifications."
+            db.flush()
 
-            for r_data in DEMO_RULES:
+        for r_data in DEMO_RULES:
+            existing_rule = db.query(Rule).filter(
+                Rule.rulebook_id == rulebook.id,
+                Rule.rule_code == r_data["rule_code"]
+            ).first()
+
+            if not existing_rule:
                 rule = Rule(
                     rulebook_id=rulebook.id,
                     rule_code=r_data["rule_code"],
@@ -266,6 +375,16 @@ def seed_database(db: Session = None):
                     explanation=f"Violation sample for {r_data['rule_code']}"
                 )
                 db.add_all([tc_pass, tc_fail])
+            else:
+                existing_rule.title = r_data["title"]
+                existing_rule.category = r_data["category"]
+                existing_rule.description = r_data["description"]
+                existing_rule.source_quote = r_data["source_quote"]
+                existing_rule.source_section = r_data["source_section"]
+                existing_rule.pass_example = r_data["pass_example"]
+                existing_rule.fail_example = r_data["fail_example"]
+                existing_rule.ambiguity_status = r_data["ambiguity_status"]
+        db.flush()
 
         # 4. Seed Facts
         for f_data in DEMO_FACTS:

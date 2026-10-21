@@ -20,10 +20,17 @@ def check_terminology_rules(
     """
     findings = []
     
+    ALLOWED_CATEGORIES = {
+        "Terminology", "Claims", "Formatting", "Brand Naming", "Brand Naming & Trademarks",
+        "Logo & Identity", "Logo & Visual Identity", "Logo Usage", "Packaging",
+        "Trademark", "Color & Visual", "Visual", "Brand Voice", "Product Claims"
+    }
+
     for rule in rules:
         if rule.get("enforcement_type") != "DETERMINISTIC":
             continue
-        if rule.get("category") not in ["Terminology", "Claims", "Formatting"]:
+        category = rule.get("category", "")
+        if category and category not in ALLOWED_CATEGORIES:
             continue
             
         pattern = rule.get("pattern")
@@ -205,3 +212,87 @@ def calculate_readability_metrics(text: str) -> Dict[str, Any]:
         "flesch_reading_ease": flesch_score,
         "reading_level": "Easy" if flesch_score >= 70 else ("Standard" if flesch_score >= 50 else "Difficult")
     }
+
+
+# =========================================================================
+# Brand Asset, Logo Geometry & Trademark Compliance
+# =========================================================================
+
+def validate_logo_dimensions(
+    width: float,
+    height: float,
+    required_ratio: float = 4.0,
+    ratio_tolerance: float = 0.05,
+    min_height_px: int = 24
+) -> Dict[str, Any]:
+    """
+    Validate logo dimensions, aspect ratio preservation, and minimum display size.
+    Prevents stretched, squashed, or illegibly small logo rendering.
+    """
+    if height <= 0:
+        return {"valid": False, "reason": "Logo height must be greater than zero."}
+    
+    actual_ratio = round(width / height, 2)
+    ratio_diff = abs(actual_ratio - required_ratio)
+    is_distorted = ratio_diff > ratio_tolerance
+    is_undersized = height < min_height_px
+
+    return {
+        "width": width,
+        "height": height,
+        "actual_ratio": actual_ratio,
+        "required_ratio": required_ratio,
+        "is_distorted": is_distorted,
+        "is_undersized": is_undersized,
+        "passes_spec": not is_distorted and not is_undersized,
+        "clearspace_margin_px": round(height * 0.5, 1)  # standard 'A' height isolation zone
+    }
+
+def check_trademark_compliance(
+    text: str,
+    master_brand: str = "ApexDynamics",
+    product_lines: Optional[List[str]] = None
+) -> List[Dict[str, Any]]:
+    """
+    Verify whether registered trademarks (®) and product line trademarks (™)
+    are properly designated upon initial occurrence in customer-facing collateral.
+    """
+    if product_lines is None:
+        product_lines = ["Apex Core", "Apex Pulse", "Apex Studio"]
+
+    findings = []
+    
+    # 1. Check master brand first-occurrence trademark designation
+    master_matches = list(re.finditer(rf"\b{re.escape(master_brand)}\b", text))
+    if master_matches:
+        first_match = master_matches[0]
+        # Check if immediately followed by ®
+        subsequent = text[first_match.end():first_match.end()+2]
+        if "®" not in subsequent:
+            findings.append({
+                "rule_code": "TM-01",
+                "brand_name": master_brand,
+                "span_start": first_match.start(),
+                "span_end": first_match.end(),
+                "explanation": f"First mention of '{master_brand}' requires registered trademark symbol: '{master_brand}®'.",
+                "suggested_correction": f"{master_brand}®"
+            })
+
+    # 2. Check product line trademarks (™)
+    for prod in product_lines:
+        p_matches = list(re.finditer(rf"\b{re.escape(prod)}\b", text))
+        if p_matches:
+            first_match = p_matches[0]
+            subsequent = text[first_match.end():first_match.end()+2]
+            if "™" not in subsequent and "®" not in subsequent:
+                findings.append({
+                    "rule_code": "TM-02",
+                    "brand_name": prod,
+                    "span_start": first_match.start(),
+                    "span_end": first_match.end(),
+                    "explanation": f"First mention of product line '{prod}' requires trademark symbol: '{prod}™'.",
+                    "suggested_correction": f"{prod}™"
+                })
+
+    return findings
+

@@ -15,12 +15,16 @@ import {
   KeyRound,
   Check,
   LogOut,
-  UserCheck,
   Wand2,
   Smile,
   Shield
 } from "lucide-react";
 import { api, User as UserType } from "@/lib/api";
+import { SpotlightCard } from "@/components/animations/SpotlightCard";
+import { BorderBeam } from "@/components/animations/BorderBeam";
+import { ShinyText } from "@/components/animations/ShinyText";
+import { AnimatedGrid } from "@/components/animations/AnimatedGrid";
+import { MagnetButton } from "@/components/animations/MagnetButton";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,13 +46,11 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [createdUser, setCreatedUser] = useState<UserType | null>(null);
-  const [workspaceUsers, setWorkspaceUsers] = useState<UserType[]>([]);
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
 
   const refreshUserData = () => {
     api.getUsers()
       .then((users) => {
-        setWorkspaceUsers(users);
         const savedId = typeof window !== "undefined" ? localStorage.getItem("canon_user_id") : null;
         if (savedId) {
           const match = users.find((u) => u.id === savedId);
@@ -105,14 +107,12 @@ export default function LoginPage() {
       };
       setCurrentUser(loggedInUser);
 
-      setSuccessMsg(`🎉 Welcome back, ${res.full_name}! Taking you to your workspace...`);
+      setSuccessMsg(`🎉 Welcome back, ${res.full_name}! Taking you to your workspace dashboard...`);
       setTimeout(() => {
-        if (res.role === "APPROVER") router.push("/approvals");
-        else if (res.role === "BRAND_MANAGER") router.push("/rulebook");
-        else router.push("/review");
+        router.push("/dashboard");
       }, 1000);
     } catch (err: any) {
-      setError(err.message || "Invalid email or password. You can also pick a 1-click account on the right!");
+      setError(err.message || "Invalid email or password. Please verify your credentials or create a new account.");
     } finally {
       setLoading(false);
     }
@@ -170,21 +170,18 @@ export default function LoginPage() {
 
       setCurrentUser(newUser);
       setCreatedUser(newUser);
-      setWorkspaceUsers((prev) => [newUser, ...prev.filter((u) => u.id !== newUser.id)]);
 
-      setSuccessMsg(`🌟 Yay! Account created successfully for ${res.full_name} (${res.role.replace("_", " ")})! You are now logged in.`);
+      setSuccessMsg(`🌟 Account created successfully for ${res.full_name}! You are now logged in.`);
 
       // Clear register inputs
       setRegFullName("");
       setRegEmail("");
       setRegPassword("");
 
-      // Automatically route after 1.8 seconds
+      // Automatically route after 1.2 seconds
       setTimeout(() => {
-        if (res.role === "APPROVER") router.push("/approvals");
-        else if (res.role === "BRAND_MANAGER") router.push("/rulebook");
-        else router.push("/review");
-      }, 1800);
+        router.push("/dashboard");
+      }, 1200);
     } catch (err: any) {
       console.error("Account creation failed:", err);
       setError(err.message || "Could not create account. That email might already be registered. Try signing in!");
@@ -195,37 +192,11 @@ export default function LoginPage() {
 
   const handleQuickFillRegister = () => {
     const randomNum = Math.floor(Math.random() * 900) + 100;
-    setRegFullName("Creative Storyteller " + randomNum);
-    setRegEmail(`storyteller${randomNum}@apexdynamics.example`);
+    setRegFullName("Creative Lead " + randomNum);
+    setRegEmail(`lead${randomNum}@apexdynamics.example`);
     setRegPassword("Password123!");
     setRegRole("CREATOR");
     setError(null);
-  };
-
-  const handleQuickLogin = async (u: UserType) => {
-    localStorage.setItem("canon_user_id", u.id);
-    localStorage.setItem("canon_user_role", u.role);
-    localStorage.setItem("canon_user_name", u.full_name);
-    localStorage.setItem("canon_user_email", u.email);
-    setCurrentUser(u);
-
-    // Try logging in to get authentic JWT token
-    try {
-      const res = await api.login({ email: u.email, password: "Password123!" });
-      localStorage.setItem("canon_token", res.access_token);
-    } catch {
-      // Demo session fallback
-    }
-
-    window.dispatchEvent(new Event("canon_user_changed"));
-    window.dispatchEvent(new Event("storage"));
-
-    setSuccessMsg(`🚀 Switched to ${u.full_name} (${u.role.replace("_", " ")})!`);
-    setTimeout(() => {
-      if (u.role === "APPROVER") router.push("/approvals");
-      else if (u.role === "BRAND_MANAGER") router.push("/rulebook");
-      else router.push("/review");
-    }, 1000);
   };
 
   const handleLogout = () => {
@@ -238,81 +209,137 @@ export default function LoginPage() {
     setCreatedUser(null);
     window.dispatchEvent(new Event("canon_user_changed"));
     window.dispatchEvent(new Event("storage"));
-    setSuccessMsg("👋 Signed out! You can now create a new account or log in as anyone anytime.");
+    setSuccessMsg("👋 Signed out! You can now create a new account or log in anytime.");
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 py-4">
-      {/* Friendly Header with Archie Mascot */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-[#FFF0E2] via-white to-[#FFF9F3] border border-[#F1E1D4] shadow-sm flex flex-col sm:flex-row items-center gap-6">
-        <div className="w-24 h-24 rounded-2xl overflow-hidden shadow-md shrink-0 border-2 border-[#F5A66B]/40 relative bg-white">
-          <img
-            src="/mascot.jpg"
-            alt="Archie the Brand Owl"
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div className="space-y-1.5 text-center sm:text-left flex-1">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#C87539] text-white shadow-2xs">
-            <Smile className="w-3.5 h-3.5" />
-            <span>Welcome to CANON!</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#382A20]">
-            {tab === "register" ? "Create Your Free Account" : "Sign In to Your Account"}
-          </h1>
-          <p className="text-sm text-[#8A7567] leading-relaxed">
-            Hi! I&apos;m Archie the Brand Owl 🦉. Create a fresh account below in 10 seconds, or pick any ready-to-test team profile on the right!
-          </p>
-        </div>
-      </div>
+    <div className="relative min-h-screen bg-[#FFFBF7] text-[#201815] py-6 px-4 sm:px-6">
+      <AnimatedGrid />
 
-      {/* Active Session Notification */}
-      {currentUser && (
-        <div className="p-5 rounded-3xl bg-[#EDFDF5] border border-[#A6F4C5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-[#A6F4C5] flex items-center justify-center text-[#027A48] font-black text-xl shadow-2xs">
-              {currentUser.full_name.charAt(0)}
+      <div className="max-w-4xl mx-auto space-y-8 relative z-10">
+        {/* Top Navigation Bar */}
+        <header className="rounded-2xl bg-white/80 backdrop-blur-xl border border-[#F4E2D3] px-6 py-3.5 shadow-sm flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[#FF8A3D] to-[#FF721B] flex items-center justify-center text-white shadow-sm shadow-[#FF8A3D]/30 group-hover:scale-105 transition-transform shrink-0">
+              <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <div>
-              <div className="text-[11px] font-bold text-[#027A48] uppercase tracking-wide">
-                Active User Profile
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-base tracking-tight text-[#201815]">CANON</span>
+                <span className="text-[9px] bg-[#FFF2E7] text-[#D95D0D] font-extrabold px-1.5 py-0.5 rounded-full border border-[#FDBA74]">
+                  ENTERPRISE
+                </span>
               </div>
-              <h2 className="text-base font-bold text-[#382A20]">
-                {currentUser.full_name}
-              </h2>
-              <div className="text-xs text-[#8A7567]">
-                {currentUser.email} • Role: <strong className="text-[#027A48]">{currentUser.role.replace("_", " ")}</strong>
-              </div>
+              <p className="text-[10px] font-semibold text-[#7C6A5E] tracking-wide">
+                Brand Governance Platform
+              </p>
             </div>
-          </div>
+          </Link>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => router.push(currentUser.role === "APPROVER" ? "/approvals" : currentUser.role === "BRAND_MANAGER" ? "/rulebook" : "/review")}
-              className="px-4 py-2.5 rounded-xl bg-[#027A48] hover:bg-[#026038] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#FFF5EC] text-[#201815] text-xs font-bold border border-[#F4E2D3] transition-all shadow-xs cursor-pointer"
             >
-              <span>Go to Workspace</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#FFF9F3] text-[#B42318] text-xs font-bold border border-[#FECDCA] transition-colors flex items-center gap-1.5 cursor-pointer"
+              <span>← Back to Overview</span>
+            </Link>
+            <Link
+              href="/guide"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#FFF5EC] text-[#7C6A5E] hover:text-[#201815] text-xs font-bold border border-[#F4E2D3] transition-all shadow-xs"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
-            </button>
+              <span>Handbook</span>
+            </Link>
+          </div>
+        </header>
+
+        {/* Visual Journey Breadcrumb */}
+        <div className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-[#F4E2D3] shadow-xs flex items-center justify-between text-xs font-bold text-[#7C6A5E] overflow-x-auto gap-2">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-[#7C6A5E] hover:text-[#D95D0D] shrink-0"
+          >
+            <span className="w-5 h-5 rounded-full bg-[#EDFDF5] text-[#027A48] flex items-center justify-center text-[11px] font-black">
+              ✓
+            </span>
+            <span>1. Product Overview</span>
+          </Link>
+          <span className="text-[#FDBA74]">➔</span>
+          <div className="flex items-center gap-1.5 text-[#D95D0D] font-extrabold shrink-0 bg-[#FFF2E7] px-3 py-1 rounded-xl border border-[#FDBA74]">
+            <span className="w-5 h-5 rounded-full bg-[#FF8A3D] text-white flex items-center justify-center text-[11px] font-black orange-dot-glow">
+              2
+            </span>
+            <span>2. Authentication & Credentials</span>
+          </div>
+          <span className="text-[#FDBA74]">➔</span>
+          <div className="flex items-center gap-1.5 text-[#7C6A5E] opacity-60 shrink-0">
+            <span className="w-5 h-5 rounded-full bg-[#F4E2D3] text-[#7C6A5E] flex items-center justify-center text-[11px] font-black">
+              3
+            </span>
+            <span>3. Workspace Dashboard</span>
           </div>
         </div>
-      )}
 
-      {/* Main Grid: Form + Quick Switch */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Form: Sign In or Register (7 cols) */}
-        <div className="lg:col-span-7 editorial-card p-7 bg-white border border-[#F1E1D4] shadow-xs space-y-6 rounded-3xl">
-          {/* Big, Obvious Friendly Tab Switcher */}
-          <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-[#FFF0E2]/70 border border-[#F1E1D4]">
+        {/* Header Title in Pale Orange Theme */}
+        <div className="p-7 rounded-3xl bg-white/85 backdrop-blur-xl border border-[#F4E2D3] shadow-sm text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74] mx-auto">
+            <Shield className="w-3.5 h-3.5 text-[#FF8A3D]" />
+            <span>Enterprise Access Control</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#201815]">
+            {tab === "register" ? "Create Your Governance Account" : "Sign In to CANON Workspace"}
+          </h1>
+          <p className="text-sm text-[#7C6A5E] max-w-md mx-auto leading-relaxed">
+            Access your brand rulebook, run deterministic compliance checks, and manage signed publications.
+          </p>
+        </div>
+
+        {/* Active Session Notification */}
+        {currentUser && (
+          <div className="p-5 rounded-3xl bg-[#EDFDF5] border border-[#A6F4C5] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-[#A6F4C5] flex items-center justify-center text-[#027A48] font-black text-xl shadow-xs">
+                {currentUser.full_name.charAt(0)}
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-[#027A48] uppercase tracking-wide">
+                  Active User Session
+                </div>
+                <h2 className="text-base font-bold text-[#201815]">
+                  {currentUser.full_name}
+                </h2>
+                <div className="text-xs text-[#7C6A5E]">
+                  {currentUser.email} • Role: <strong className="text-[#027A48]">{currentUser.role.replace("_", " ")}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] hover:from-[#FF9952] hover:to-[#E8630D] text-white text-xs font-extrabold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+              >
+                <span>Go to Workspace</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#FFF5EC] text-[#B42318] text-xs font-bold border border-[#FECDCA] transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Auth Box with SpotlightCard + BorderBeam */}
+        <SpotlightCard className="max-w-xl mx-auto w-full p-7 sm:p-9 relative">
+          <BorderBeam duration={9} size={200} colorFrom="#FF8A3D" colorTo="#FFAE74" />
+
+          {/* Tab Switcher */}
+          <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-[#FFF5EC] border border-[#F4E2D3] mb-6">
             <button
               id="tab-register-btn"
               type="button"
@@ -323,12 +350,12 @@ export default function LoginPage() {
               }}
               className={`py-3 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 tab === "register"
-                  ? "bg-[#027A48] text-white shadow-sm"
-                  : "text-[#8A7567] hover:text-[#382A20]"
+                  ? "bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] text-white shadow-sm shadow-[#FF8A3D]/30"
+                  : "text-[#7C6A5E] hover:text-[#201815]"
               }`}
             >
               <Sparkles className="w-4 h-4" />
-              <span>✨ Create New Account</span>
+              <span>Create Account</span>
             </button>
 
             <button
@@ -341,65 +368,51 @@ export default function LoginPage() {
               }}
               className={`py-3 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 tab === "login"
-                  ? "bg-[#C87539] text-white shadow-sm"
-                  : "text-[#8A7567] hover:text-[#382A20]"
+                  ? "bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] text-white shadow-sm shadow-[#FF8A3D]/30"
+                  : "text-[#7C6A5E] hover:text-[#201815]"
               }`}
             >
               <Lock className="w-4 h-4" />
-              <span>👋 Sign In (Existing User)</span>
+              <span>Sign In</span>
             </button>
           </div>
 
           {/* Feedback Alerts */}
           {error && (
-            <div className="p-4 rounded-2xl bg-[#FEEBEA] border border-[#FECDCA] text-[#B42318] text-xs font-semibold flex items-center gap-2.5 animate-in fade-in">
+            <div className="mb-4 p-4 rounded-2xl bg-[#FFF0F0] border border-[#FECDCA] text-[#B42318] text-xs font-semibold flex items-center gap-2.5">
               <AlertCircle className="w-5 h-5 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-4 rounded-2xl bg-[#EDFDF5] border border-[#A6F4C5] text-[#027A48] text-xs font-bold space-y-2 animate-in fade-in">
+            <div className="mb-4 p-4 rounded-2xl bg-[#EDFDF5] border border-[#A6F4C5] text-[#027A48] text-xs font-bold space-y-2">
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
                 <span>{successMsg}</span>
               </div>
-              <div className="pt-2 flex items-center gap-2">
-                <Link
-                  href="/review"
-                  className="px-3 py-1.5 rounded-lg bg-[#027A48] text-white text-xs font-bold hover:bg-[#026038]"
-                >
-                  Go to Review Studio →
-                </Link>
-                <Link
-                  href="/rulebook"
-                  className="px-3 py-1.5 rounded-lg bg-white border border-[#A6F4C5] text-[#027A48] text-xs font-bold hover:bg-[#EDFDF5]"
-                >
-                  View Rulebook
-                </Link>
-              </div>
             </div>
           )}
 
-          {/* 1. Register Form (Default) */}
+          {/* 1. Register Form */}
           {tab === "register" && (
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="flex items-center justify-between pb-1">
                 <div>
-                  <h2 className="text-sm font-extrabold text-[#382A20]">
-                    Create Your Account Fields:
+                  <h2 className="text-sm font-extrabold text-[#201815]">
+                    Account Details:
                   </h2>
-                  <p className="text-[11px] text-[#8A7567]">
-                    Fill in these 4 simple fields to get your own safe workspace
+                  <p className="text-[11px] text-[#7C6A5E]">
+                    Get immediate access to your team&apos;s workspace
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={handleQuickFillRegister}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF0E2] text-[#C87539] text-xs font-bold hover:bg-[#F5A66B]/20 transition-colors cursor-pointer border border-[#F5A66B]/30"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF2E7] text-[#D95D0D] text-xs font-bold hover:bg-[#FFEAD9] transition-colors cursor-pointer border border-[#FDBA74]"
                 >
-                  <Wand2 className="w-3.5 h-3.5" />
-                  <span>⚡ 1-Click Auto-Fill</span>
+                  <Wand2 className="w-3.5 h-3.5 text-[#FF8A3D]" />
+                  <span>1-Click Auto-Fill</span>
                 </button>
               </div>
 
@@ -407,12 +420,12 @@ export default function LoginPage() {
               <div>
                 <label
                   htmlFor="reg-fullname"
-                  className="text-xs font-bold text-[#382A20] block mb-1.5 cursor-pointer"
+                  className="text-xs font-bold text-[#201815] block mb-1.5 cursor-pointer"
                 >
                   1. Your Full Name
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-[#8A7567] absolute left-3.5 top-3 pointer-events-none" />
+                  <User className="w-4 h-4 text-[#7C6A5E] absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     id="reg-fullname"
                     name="fullname"
@@ -431,12 +444,12 @@ export default function LoginPage() {
               <div>
                 <label
                   htmlFor="reg-email"
-                  className="text-xs font-bold text-[#382A20] block mb-1.5 cursor-pointer"
+                  className="text-xs font-bold text-[#201815] block mb-1.5 cursor-pointer"
                 >
                   2. Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-[#8A7567] absolute left-3.5 top-3 pointer-events-none" />
+                  <Mail className="w-4 h-4 text-[#7C6A5E] absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     id="reg-email"
                     name="email"
@@ -451,13 +464,13 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Role Selection Dropdown */}
+              {/* Role Selection */}
               <div>
                 <label
                   htmlFor="reg-role"
-                  className="text-xs font-bold text-[#382A20] block mb-1.5 cursor-pointer"
+                  className="text-xs font-bold text-[#201815] block mb-1.5 cursor-pointer"
                 >
-                  3. What is your role? (Select an option)
+                  3. Workspace Role
                 </label>
                 <select
                   id="reg-role"
@@ -468,25 +481,22 @@ export default function LoginPage() {
                 >
                   <option value="CREATOR">✍️ Content Writer / Storyteller (Writes & fixes copy)</option>
                   <option value="BRAND_MANAGER">🛡️ Brand Guardian (Creates rules & facts)</option>
-                  <option value="APPROVER">👔 Approver (Issues official golden seals)</option>
+                  <option value="APPROVER">👔 Approver (Issues official cryptographic seals)</option>
                   <option value="AUTHORISED_REVIEWER">🔍 Reviewer (Audits compliance)</option>
                   <option value="ADMIN">⚙️ Administrator (Full system access)</option>
                 </select>
-                <p className="text-[11px] text-[#8A7567] mt-1">
-                  Pick <strong>Content Writer</strong> if you want to write and fix stories!
-                </p>
               </div>
 
               {/* Password */}
               <div>
                 <label
                   htmlFor="reg-password"
-                  className="text-xs font-bold text-[#382A20] block mb-1.5 cursor-pointer"
+                  className="text-xs font-bold text-[#201815] block mb-1.5 cursor-pointer"
                 >
-                  4. Choose a Password
+                  4. Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-[#8A7567] absolute left-3.5 top-3 pointer-events-none" />
+                  <Lock className="w-4 h-4 text-[#7C6A5E] absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     id="reg-password"
                     name="password"
@@ -506,9 +516,9 @@ export default function LoginPage() {
                 id="btn-create-account"
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-[#027A48] hover:bg-[#026038] text-white text-xs font-extrabold transition-all shadow-sm hover:shadow-md disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] hover:from-[#FF9952] hover:to-[#E8630D] text-white text-xs font-extrabold transition-all shadow-md shadow-[#FF8A3D]/25 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
-                <span>{loading ? "Creating Your Account..." : "✨ Create Your Account & Start Writing!"}</span>
+                <span>{loading ? "Creating Your Account..." : "✨ Create Your Account & Start Writing"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -519,9 +529,9 @@ export default function LoginPage() {
                     setTab("login");
                     setError(null);
                   }}
-                  className="text-xs text-[#8A7567] hover:text-[#382A20] font-semibold cursor-pointer"
+                  className="text-xs text-[#7C6A5E] hover:text-[#201815] font-semibold cursor-pointer"
                 >
-                  Already have an account? <span className="text-[#C87539] font-bold">Sign In here →</span>
+                  Already have an account? <span className="text-[#D95D0D] font-bold">Sign In here →</span>
                 </button>
               </div>
             </form>
@@ -531,23 +541,23 @@ export default function LoginPage() {
           {tab === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <h2 className="text-sm font-extrabold text-[#382A20]">
-                  Sign In to CANON:
+                <h2 className="text-sm font-extrabold text-[#201815]">
+                  Sign In to Workspace:
                 </h2>
-                <p className="text-[11px] text-[#8A7567]">
-                  Enter your email and password to continue
+                <p className="text-[11px] text-[#7C6A5E]">
+                  Enter your credentials to continue
                 </p>
               </div>
 
               <div>
                 <label
                   htmlFor="login-email"
-                  className="text-xs font-bold text-[#382A20] block mb-1.5 cursor-pointer"
+                  className="text-xs font-bold text-[#201815] block mb-1.5 cursor-pointer"
                 >
-                  Your Email
+                  Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-[#8A7567] absolute left-3.5 top-3 pointer-events-none" />
+                  <Mail className="w-4 h-4 text-[#7C6A5E] absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     id="login-email"
                     name="email"
@@ -565,12 +575,12 @@ export default function LoginPage() {
               <div>
                 <label
                   htmlFor="login-password"
-                  className="text-xs font-bold text-[#382A20] block mb-1.5 cursor-pointer"
+                  className="text-xs font-bold text-[#201815] block mb-1.5 cursor-pointer"
                 >
-                  Your Password
+                  Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-[#8A7567] absolute left-3.5 top-3 pointer-events-none" />
+                  <Lock className="w-4 h-4 text-[#7C6A5E] absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     id="login-password"
                     name="password"
@@ -589,93 +599,26 @@ export default function LoginPage() {
                 id="btn-login"
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-extrabold transition-all shadow-sm hover:shadow-md disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] hover:from-[#FF9952] hover:to-[#E8630D] text-white text-xs font-extrabold transition-all shadow-md shadow-[#FF8A3D]/25 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>{loading ? "Signing In..." : "🚀 Sign In & Enter"}</span>
               </button>
 
-              <div className="text-center pt-3 border-t border-[#F1E1D4]">
+              <div className="text-center pt-3 border-t border-[#F4E2D3]">
                 <button
                   type="button"
                   onClick={() => {
                     setTab("register");
                     setError(null);
                   }}
-                  className="w-full py-2.5 rounded-xl bg-[#FFF9F3] hover:bg-[#FFF0E2] text-[#027A48] border border-[#A6F4C5] text-xs font-bold transition-colors cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-[#FFF5EC] hover:bg-[#FFEAD9] text-[#D95D0D] border border-[#FDBA74] text-xs font-bold transition-colors cursor-pointer"
                 >
-                  ✨ Don&apos;t have an account? Click here to Create Free Account
+                  ✨ Don&apos;t have an account? Click to Create Account
                 </button>
               </div>
             </form>
           )}
-        </div>
-
-        {/* Right Panel: 1-Click Ready Accounts (5 cols) */}
-        <div className="lg:col-span-5 editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs space-y-4 rounded-3xl">
-          <div className="flex items-center gap-2 pb-2 border-b border-[#F1E1D4]">
-            <UserCheck className="w-5 h-5 text-[#C87539]" />
-            <h2 className="text-sm font-extrabold text-[#382A20] uppercase tracking-wider">
-              1-Click Instant Sign-In
-            </h2>
-          </div>
-          <p className="text-xs text-[#8A7567] leading-relaxed">
-            No typing needed! Just click any team member below to instantly test the platform with their permissions:
-          </p>
-
-          <div className="space-y-2.5 pt-1">
-            {workspaceUsers.map((u) => {
-              const isCurrent = currentUser?.id === u.id;
-              let roleEmoji = "✍️";
-              let badgeColor = "bg-[#FFF0E2] text-[#C87539]";
-              if (u.role === "APPROVER") {
-                roleEmoji = "👔";
-                badgeColor = "bg-[#EDFDF5] text-[#027A48]";
-              } else if (u.role === "BRAND_MANAGER") {
-                roleEmoji = "🛡️";
-                badgeColor = "bg-[#FFF9F3] text-[#C87539]";
-              } else if (u.role === "ADMIN") {
-                roleEmoji = "⚙️";
-                badgeColor = "bg-[#FEEBEA] text-[#B42318]";
-              }
-
-              return (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => handleQuickLogin(u)}
-                  className={`w-full p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between gap-3 cursor-pointer ${
-                    isCurrent
-                      ? "bg-[#FFF9F3] border-[#C87539] ring-2 ring-[#C87539]/20 shadow-xs"
-                      : "bg-white border-[#F1E1D4] hover:bg-[#FFF9F3] hover:border-[#F5A66B]/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-white border border-[#F1E1D4] flex items-center justify-center text-sm shadow-2xs shrink-0">
-                      {roleEmoji}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-[#382A20] truncate">
-                        {u.full_name}
-                      </div>
-                      <div className="text-[10px] text-[#8A7567] truncate">
-                        {u.email}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}`}>
-                      {u.role.replace("_", " ")}
-                    </span>
-                    {isCurrent && (
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Active"></span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        </SpotlightCard>
       </div>
     </div>
   );

@@ -27,39 +27,39 @@ import { api, ReviewResult, User as UserType } from "@/lib/api";
 
 const PRESET_TEST_CASES = [
   {
-    badge: "Banned Terminology",
-    name: "Scenario 1: Banned Name & Exaggeration",
-    title: "Enterprise Product Launch Announcement",
-    text: "Migrate your mission-critical workloads to Apex Cloud today. Apex Dynamics is the undisputed fastest platform in the world for machine learning inference, with 100% uptime guaranteed. Visit our website to sign up for an enterprise evaluation.",
-    explain: "Deliberately uses deprecated 'Apex Cloud' and claims 'undisputed fastest in the world'.",
+    badge: "Product Naming & Trademarks",
+    name: "Scenario 1: Packaging & Spec (Deprecated Name & Missing Trademark)",
+    title: "Apex Core Enterprise Packaging Spec Sheet",
+    text: "Deploy mission-critical workloads with apex dynamics. Upgrade your servers to Apex Cloud today for maximum hardware acceleration. Apex Dynamics is the undisputed fastest platform in the world, backed by guaranteed 100% uptime.",
+    explain: "Violates product brand nomenclature ('Apex Cloud' instead of 'Apex Core™'), missing registered trademark symbol (ApexDynamics®), improper lowercase capitalization ('apex dynamics'), and unverified superlative claims.",
   },
   {
-    badge: "Expired Evidence",
-    name: "Scenario 2: Outdated 2025 Customer Metric",
-    title: "Quarterly Growth Highlights",
-    text: "We are thrilled to celebrate our growing ecosystem! Join over 1,450 verified enterprise organizations deploying workloads on Apex Core. Explore our developer tutorials today.",
-    explain: "Quotes '1,450 customers' which expired on Dec 31, 2025 in the Approved Fact Vault.",
+    badge: "Expired Lab Evidence",
+    name: "Scenario 2: Hardware Datasheet (Expired Customer Metric)",
+    title: "Apex Pulse Edge Hardware Datasheet v2.1",
+    text: "The new Apex Pulse Edge hardware module connects over 1,450 verified enterprise organizations across global tier-1 regions. Features certified SOC 2 Type II compliance and low-latency throughput.",
+    explain: "Quotes '1,450 enterprise organizations' which expired on Dec 31, 2025 in the Approved Fact Vault (demoted to STALE).",
   },
   {
-    badge: "Tone & Voice",
-    name: "Scenario 3: Clickbait & Urgent Tone",
-    title: "Social Viral Announcement",
-    text: "OMG you WON'T BELIEVE what we just dropped!!! Run don't walk to grab this right now before prices double forever 🚀🔥💥 Sign up immediately!",
-    explain: "Excessive exclamation marks, emojis, and clickbait urgency violate brand voice.",
+    badge: "Logo & Visual Identity",
+    name: "Scenario 3: Retail Partner Packaging & Logo Guidelines",
+    title: "Retail Partner Co-Branding & Display Brief",
+    text: "Partners must display our altered logomark with custom neon styling and crowded logo placement beside third-party partner emblems. Use distorted logo proportions where packaging space is limited.",
+    explain: "Violates strict Logo Isolation and Forbidden Alterations policies (Rule LOGO-01 crowded logo, Rule LOGO-02 distorted logo).",
   },
   {
-    badge: "Privacy Gateway",
-    name: "Scenario 4: Secret Codename & Pricing",
-    title: "Confidential Launch Preview",
-    text: "We are secretly launching Project Prometheus with an unreleased price of $499 per mo. Check out our early documentation.",
-    explain: "Redaction Gateway automatically masks confidential project names and pricing before AI checks.",
+    badge: "Redaction Gateway",
+    name: "Scenario 4: Confidential Hardware Codename & Unreleased SKU",
+    title: "Confidential Hardware Architecture Leak Preview",
+    text: "We are secretly sampling Project Prometheus silicon with an unreleased price of $499 per unit. Internal benchmark shows 42ms roundtrip latency.",
+    explain: "Redaction Gateway automatically masks confidential SKU codenames and unreleased pricing before compliance review.",
   },
   {
-    badge: "Compliant Copy",
-    name: "Scenario 5: 100% Certified Launch Copy",
-    title: "Observability Feature Release",
-    text: "We are pleased to introduce enhanced observability dashboards for Apex Core. Engineered to satisfy our 99.98% SLA availability commitment, the new telemetry tools provide real-time cluster metrics. Learn more at our documentation portal.",
-    explain: "Passes all brand rules, quotes verified SLA numbers, and maintains measured authoritative tone.",
+    badge: "100% Compliant",
+    name: "Scenario 5: 100% Compliant Product Catalog Collateral",
+    title: "ApexDynamics® Official Product Catalog v2026",
+    text: "ApexDynamics® is pleased to introduce Apex Core™ for high-throughput enterprise infrastructure. Engineered to satisfy our 99.98% SLA availability commitment, the new telemetry tools provide real-time cluster metrics. Learn more at our documentation portal.",
+    explain: "Passes all brand rules: uses registered trademark (®), approved product naming (Apex Core™), verified SLA (99.98%), and authoritative brand voice.",
   },
 ];
 
@@ -150,35 +150,31 @@ export default function ReviewStudioPage() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto py-2">
-      {/* Friendly Page Header with Archie Mascot */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-[#FFF0E2] via-white to-[#FFF9F3] border border-[#F1E1D4] shadow-xs flex flex-col sm:flex-row items-center gap-6">
-        <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-sm shrink-0 border-2 border-white bg-white">
-          <img
-            src="/mascot.jpg"
-            alt="Archie the Owl"
-            className="w-full h-full object-cover"
-          />
+      {/* Executive Page Header */}
+      <div className="p-6 rounded-2xl bg-white border border-[#F1E1D4] shadow-xs flex flex-col sm:flex-row items-center gap-5">
+        <div className="w-12 h-12 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
+          <FileCheck2 className="w-6 h-6" />
         </div>
         <div className="space-y-1 text-center sm:text-left flex-1">
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#C87539] text-white uppercase tracking-wide">
-              The Promise Checker 🦉
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 text-white uppercase tracking-wider">
+              Brand Governance Compiler
             </span>
-            <span className="text-xs text-[#8A7567]">Writing as: <strong className="text-[#382A20]">{submitterName}</strong> ({submitterRole.replace("_", " ")})</span>
+            <span className="text-xs text-[#8A7567]">Submitter: <strong className="text-[#1E1B4B]">{submitterName}</strong> ({submitterRole.replace("_", " ")})</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-[#382A20]">
-            Check Your Marketing Post or Story!
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1E1B4B]">
+            Brand Spec &amp; Collateral Review Studio
           </h1>
-          <p className="text-xs text-[#8A7567] leading-relaxed">
-            Write or paste your text below. Archie will check your names, promises, and numbers in seconds!
+          <p className="text-xs text-[#64748B] leading-relaxed">
+            Audit product packaging, hardware datasheets, brand name usage, logo placement directives, and certified benchmark claims against the compiled rulebook.
           </p>
         </div>
         <Link
           href="/guide"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white hover:bg-[#FFF9F3] text-[#C87539] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs shrink-0"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-[#1E1B4B] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs shrink-0"
         >
-          <HelpCircle className="w-4 h-4" />
-          <span>How to Use Guide</span>
+          <HelpCircle className="w-4 h-4 text-slate-600" />
+          <span>Documentation</span>
         </Link>
       </div>
 
@@ -251,13 +247,13 @@ export default function ReviewStudioPage() {
       <div className="editorial-card p-6 bg-white border border-[#F1E1D4] space-y-4 shadow-xs">
         <div>
           <label className="text-xs font-bold text-[#382A20] uppercase tracking-wider block mb-1.5">
-            Content Title / Campaign Headline
+            Product Collateral Title / Packaging SKU
           </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Q3 Product Launch Press Release"
+            placeholder="e.g. Apex Core Packaging Spec Sheet v2.0"
             className="editorial-input w-full p-3 text-sm font-semibold"
           />
         </div>
@@ -265,7 +261,7 @@ export default function ReviewStudioPage() {
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-bold text-[#382A20] uppercase tracking-wider">
-              Draft Text Copy
+              Product Collateral &amp; Brand Spec Text
             </label>
             <span className="text-xs text-[#8A7567]">
               {contentText.split(/\s+/).filter(Boolean).length} words · {contentText.length} characters
@@ -274,7 +270,7 @@ export default function ReviewStudioPage() {
           <textarea
             value={contentText}
             onChange={(e) => setContentText(e.target.value)}
-            placeholder="Paste your real marketing article, ad text, or product copy here..."
+            placeholder="Paste product packaging copy, hardware datasheet text, brand naming references, or logo guidelines..."
             className="editorial-input w-full h-40 p-3.5 text-sm leading-relaxed"
           />
         </div>

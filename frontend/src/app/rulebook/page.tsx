@@ -25,16 +25,16 @@ import { api, Rulebook, Rule } from "@/lib/api";
 
 const SAMPLE_GUIDELINES = [
   {
-    title: "Brand Voice & SLA Policy",
-    text: "Brand Voice Directive: Communications should be clean, modern, and high quality. Never use the deprecated term 'Apex Cloud'. All claims regarding uptime must not guarantee 100% availability, but cite our verified 99.98% SLA."
+    title: "Product Naming Architecture & Trademark Policy",
+    text: "Product Naming Directive: Always refer to the flagship enterprise engine as 'Apex Core™'. Under no circumstances should the deprecated name 'Apex Cloud' be used in marketing, sales, or public collateral. Capitalization must always be CamelCase 'ApexDynamics'."
   },
   {
-    title: "Product Naming Standards",
-    text: "Product Naming Guardrail: Always refer to the flagship enterprise system as 'Apex Core Enterprise'. Do not shorten the title to 'ACE' or 'Apex Platform' in customer-facing press releases or landing pages."
+    title: "Logo Clearspace & Forbidden Treatments",
+    text: "Logo Usage Directive: The primary ApexDynamics mark must always maintain an isolation perimeter equal to the 'A' monogram height on all four sides. Never crowd, stretch, distort, or apply unapproved color fills or drop shadows to the official logomark."
   },
   {
-    title: "Customer Milestone Claims",
-    text: "Customer Claims Policy: Do not state that Apex serves over 50,000 customers without citing the audited 2026 Customer Ledger. The current certified customer count is 42,500 active organizations."
+    title: "Product Specifications & Benchmark Claims",
+    text: "Product Claims Policy: Never claim '100% uptime guaranteed'. All system reliability communications must cite our certified SLA of 99.98% availability. Any benchmark claim of being 'fastest' requires verifiable third-party certification."
   }
 ];
 
@@ -181,7 +181,9 @@ export default function RulebookPage() {
     setTestingAll(false);
   };
 
-  const categories = ["ALL", "Terminology", "Claims", "Tone", "Visual", "Accessibility"];
+  const defaultCategories = ["Brand Naming", "Logo & Visual Identity", "Product Claims", "Brand Voice", "Color & Visual", "Visual"];
+  const ruleCategories = (rulebook?.rules || []).map((r) => r.category).filter(Boolean);
+  const categories = ["ALL", ...Array.from(new Set([...defaultCategories, ...ruleCategories]))];
 
   const filteredRules = (rulebook?.rules || []).filter((r) => {
     const matchesCat = selectedCategory === "ALL" ? true : r.category === selectedCategory;
@@ -198,21 +200,21 @@ export default function RulebookPage() {
       {/* Friendly Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden border border-[#F5A66B]/40 shadow-xs shrink-0">
-            <img src="/mascot.jpg" alt="Archie" className="w-full h-full object-cover" />
+          <div className="w-12 h-12 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
+            <BookOpen className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFF0E2] text-[#C87539] border border-[#F5A66B]/30 uppercase tracking-wide">
-                📚 Archie&apos;s Rulebook
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 text-white uppercase tracking-wider">
+                Product &amp; Brand Rulebook
               </span>
               <span className="text-xs text-[#8A7567] font-medium">Version {rulebook?.version || "1.0.0"}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#382A20]">
-              Company Brand Rules & Guidelines
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#1E1B4B]">
+              Brand &amp; Product Rulebook Studio
             </h1>
-            <p className="text-sm text-[#8A7567] mt-0.5">
-              Every rule here quotes official company guidebooks. Archie will never make up rules or scold you without real evidence!
+            <p className="text-sm text-[#64748B] mt-0.5">
+              Compiled brand guidelines, logo clearspace formulas, product naming architecture, and verified performance specs.
             </p>
           </div>
         </div>

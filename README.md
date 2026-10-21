@@ -2,20 +2,20 @@
 ### Round 2 Hackathon Submission | WeCode Coders Hackathon | Problem Statement by Inkloom AI
 
 > **Core Invariant: NO CITATION, NO BLOCKING FLAG.**  
-> A language model must never invent a rule, fabricate a source quote, approve content automatically, or silently alter a creator's message. Every blocking finding must trace to verified evidence.
+> A language model must never invent a rule, fabricate a source quote, alter brand logos, or approve unverified product claims. Every blocking finding must trace to verified evidence in your brand guidelines and trademark vault.
 
 ---
 
 ## 1. Executive Summary
 
-CANON transforms static brand guidelines into a versioned, testable rulebook, reviews incoming drafts through a hybrid deterministic and local-AI pipeline, validates promotional claims against an Approved Fact Vault with evidence expiry, and produces tamper-evident cryptographic receipts.
+CANON transforms static brand guidelines, product taxonomy rules, and logo usage specs into a versioned, testable rulebook. It continuously evaluates product packaging, hardware datasheets, and marketing collateral through a hybrid deterministic and local-AI pipeline—strictly preventing deprecated product names, altered or crowded logos, missing registered trademarks (®/™), and unverified benchmark claims.
 
 ### The Five Signature Mechanisms
-1. **Guideline Compiler**: Extracts atomic rules with exact source quotes, pass/fail test pairs, and ambiguity scores.
-2. **Claim Ledger with Evidence Expiry**: Binds promotional claims to approved facts; automatically flags expired facts (`STALE`) and unproven superlatives (`NEEDS_PROOF`).
+1. **Brand Guideline & Logo Spec Compiler**: Extracts atomic rules for product naming architecture, logo clearspace isolation, forbidden treatments, and trademark notices with exact source citations and pass/fail test pairs.
+2. **Product Specification & Claim Ledger with Evidence Expiry**: Binds promotional claims and specs to certified engineering facts; automatically flags expired lab metrics (`STALE`) and unproven superlatives (`NEEDS_PROOF`).
 3. **Citation Verifier ("No Citation, No Flag")**: An independent verification layer that validates rule IDs, source quotes, and content spans—strictly demoting any unverified AI finding to an Advisory.
-4. **Intent Lock**: Generates minimal surgical diffs and machine-checks that the creator's purpose, audience, call to action, and critical facts are preserved.
-5. **Governance Loop & Signed Receipts**: Overrides cluster into auto-drafted guideline amendment proposals, while completed reviews issue tamper-evident SHA-256 receipts.
+4. **Intent Lock**: Generates minimal surgical token replacements (e.g. replacing deprecated 'Apex Cloud' with 'Apex Core™') while preserving the creator's creative tone, audience, and message.
+5. **Governance Loop & Signed Receipts**: Overrides cluster into auto-drafted guideline amendment proposals, while completed reviews issue tamper-evident HMAC-SHA256 brand receipts.
 
 ---
 
