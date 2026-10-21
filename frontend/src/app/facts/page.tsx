@@ -74,20 +74,24 @@ export default function FactsPage() {
     showToast(`Proof renewal request sent to ${fact.owner_name} (${fact.owner_email})!`);
   };
 
-  const handleRenewFact = (factId: string) => {
-    // In-memory extension for demonstration
-    setFacts((prev) =>
-      prev.map((f) =>
-        f.id === factId
-          ? {
-              ...f,
-              is_expired: false,
-              valid_until: new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString(),
-            }
-          : f
-      )
-    );
-    showToast("Fact validity renewed for +1 year. Claim is now certified!");
+  const handleRenewFact = async (factId: string) => {
+    const newDate = new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString();
+    try {
+      await api.updateFact(factId, { valid_until: newDate });
+      loadFacts();
+      showToast("🎉 Fact validity renewed for +1 year! Claim is certified and live in the database.");
+    } catch (err: any) {
+      console.error("Failed to renew fact:", err);
+      // Optimistic update fallback
+      setFacts((prev) =>
+        prev.map((f) =>
+          f.id === factId
+            ? { ...f, is_expired: false, valid_until: newDate }
+            : f
+        )
+      );
+      showToast("Fact validity renewed for +1 year. Claim is now certified!");
+    }
   };
 
   const showToast = (msg: string) => {

@@ -220,44 +220,48 @@ export default function AssetLibraryPage() {
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setFgHex("#382A20");
                     setBgHex("#FFF9F3");
                   }}
-                  className="p-2.5 rounded-xl bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-left transition-colors"
+                  className="p-2.5 rounded-xl bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-left transition-colors cursor-pointer"
                 >
                   <div className="text-xs font-bold text-[#382A20]">Dark Copy on Cream Canvas</div>
                   <div className="text-[10px] text-[#027A48] font-semibold">12.8:1 Ratio • Triple-A Pass</div>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setFgHex("#C87539");
                     setBgHex("#FFFFFF");
                   }}
-                  className="p-2.5 rounded-xl bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-left transition-colors"
+                  className="p-2.5 rounded-xl bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-left transition-colors cursor-pointer"
                 >
                   <div className="text-xs font-bold text-[#382A20]">Strong Accent on White</div>
                   <div className="text-[10px] text-[#027A48] font-semibold">4.8:1 Ratio • Double-A Pass</div>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setFgHex("#FFFFFF");
                     setBgHex("#C87539");
                   }}
-                  className="p-2.5 rounded-xl bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-left transition-colors"
+                  className="p-2.5 rounded-xl bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-left transition-colors cursor-pointer"
                 >
                   <div className="text-xs font-bold text-[#382A20]">White on Button Accent</div>
                   <div className="text-[10px] text-[#027A48] font-semibold">4.8:1 Ratio • Double-A Pass</div>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setFgHex("#F1E1D4");
                     setBgHex("#FFFFFF");
                   }}
-                  className="p-2.5 rounded-xl bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-left transition-colors"
+                  className="p-2.5 rounded-xl bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-left transition-colors cursor-pointer"
                 >
                   <div className="text-xs font-bold text-[#382A20]">Soft Border on White</div>
                   <div className="text-[10px] text-[#B42318] font-semibold">1.2:1 Ratio • Low Contrast Fail</div>

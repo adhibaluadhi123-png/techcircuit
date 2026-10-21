@@ -112,6 +112,11 @@ export default function ReviewStudioPage() {
       formData.append("content_text", contentText);
     }
 
+    const storedUserId = typeof window !== "undefined" ? localStorage.getItem("canon_user_id") : null;
+    if (storedUserId) {
+      formData.append("creator_id", storedUserId);
+    }
+
     try {
       setTimeout(() => {
         setStepPercent(45);

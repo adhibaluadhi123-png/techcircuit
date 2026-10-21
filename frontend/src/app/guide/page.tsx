@@ -27,15 +27,19 @@ import {
 } from "lucide-react";
 
 export default function HowToUsePage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(0); // First open by default
-  const [allExpanded, setAllExpanded] = useState(false);
+  const [openFaqs, setOpenFaqs] = useState<number[]>([0]); // First FAQ open by default
+
+  const toggleFaq = (idx: number) => {
+    setOpenFaqs((prev) =>
+      prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
+    );
+  };
 
   const toggleAll = () => {
-    if (allExpanded) {
-      setOpenFaq(null);
-      setAllExpanded(false);
+    if (openFaqs.length === FAQS.length) {
+      setOpenFaqs([]);
     } else {
-      setAllExpanded(true);
+      setOpenFaqs(FAQS.map((_, idx) => idx));
     }
   };
 
@@ -145,6 +149,12 @@ export default function HowToUsePage() {
           </p>
           <div className="pt-2 flex flex-wrap gap-3">
             <Link
+              href="/login?tab=register"
+              className="px-5 py-2.5 rounded-2xl bg-[#027A48] hover:bg-[#026038] text-white text-xs font-black transition-all shadow-sm"
+            >
+              ✨ Create Free Account
+            </Link>
+            <Link
               href="/review"
               className="px-5 py-2.5 rounded-2xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-extrabold transition-all shadow-sm"
             >
@@ -154,7 +164,7 @@ export default function HowToUsePage() {
               href="/login"
               className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#FFF9F3] text-[#382A20] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
             >
-              Log In / Switch Account
+              Sign In / Switch
             </Link>
           </div>
         </div>
@@ -322,13 +332,13 @@ export default function HowToUsePage() {
             onClick={toggleAll}
             className="text-xs text-[#C87539] font-bold hover:underline self-start sm:self-auto"
           >
-            {allExpanded ? "Collapse All" : "Expand All Questions"}
+            {openFaqs.length === FAQS.length ? "Collapse All Questions" : "Expand All Questions"}
           </button>
         </div>
 
         <div className="space-y-3 pt-2">
           {FAQS.map((faq, idx) => {
-            const isOpen = allExpanded || openFaq === idx;
+            const isOpen = openFaqs.includes(idx);
             return (
               <div
                 key={idx}
@@ -336,14 +346,7 @@ export default function HowToUsePage() {
               >
                 <button
                   type="button"
-                  onClick={() => {
-                    if (allExpanded) {
-                      setAllExpanded(false);
-                      setOpenFaq(isOpen ? null : idx);
-                    } else {
-                      setOpenFaq(isOpen ? null : idx);
-                    }
-                  }}
+                  onClick={() => toggleFaq(idx)}
                   className="w-full p-4 text-left flex items-center justify-between gap-3 hover:bg-[#FFF0E2]/60 transition-colors cursor-pointer select-none"
                 >
                   <span className="font-extrabold text-[#382A20] text-sm">

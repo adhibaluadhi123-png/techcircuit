@@ -69,6 +69,67 @@ export default function RulebookPage() {
       });
   };
 
+  const [publishing, setPublishing] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState(false);
+
+  const handlePublishCompiled = async () => {
+    if (compiledCandidates.length === 0) return;
+    setPublishing(true);
+    try {
+      const allRules = [
+        ...(rulebook?.rules || []).map((r) => ({
+          rule_code: r.rule_code,
+          title: r.title,
+          category: r.category,
+          description: r.description,
+          source_quote: r.source_quote,
+          source_section: r.source_section,
+          severity: r.severity,
+          enforcement_type: r.enforcement_type,
+          pass_example: r.pass_example,
+          fail_example: r.fail_example,
+          ambiguity_status: r.ambiguity_status,
+        })),
+        ...compiledCandidates.map((c) => ({
+          rule_code: c.rule_code,
+          title: c.title,
+          category: c.category || "Tone",
+          description: c.description || "",
+          source_quote: c.source_quote || "",
+          source_section: c.source_section || "Compiled Guidelines",
+          severity: c.severity || "BLOCKING",
+          enforcement_type: c.enforcement_type || "DETERMINISTIC",
+          pass_example: c.pass_example || null,
+          fail_example: c.fail_example || null,
+          ambiguity_status: c.ambiguity_status || "CLEAR",
+        }))
+      ];
+
+      const formData = new FormData();
+      formData.append("title", "ApexDynamics Master Brand Rulebook");
+      const nextVer = `1.${(parseInt((rulebook?.version || "1.0.0").split(".")[1] || "0") + 1)}.0`;
+      formData.append("version", nextVer);
+      formData.append("rules_json", JSON.stringify(allRules));
+
+      const res = await fetch("http://127.0.0.1:8000/api/v1/rulebooks/publish", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        setPublishSuccess(true);
+        setCompiledCandidates([]);
+        setPastedText("");
+        loadRulebook();
+        setTimeout(() => setPublishSuccess(false), 5000);
+      }
+    } catch (err) {
+      console.error("Publishing error:", err);
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const handleCompile = async () => {
     if (!pastedText.trim()) return;
     setCompiling(true);
@@ -303,13 +364,31 @@ export default function RulebookPage() {
         </div>
 
         {/* Compiled Candidate Preview */}
+        {publishSuccess && (
+          <div className="mt-4 p-4 rounded-xl bg-[#EDFDF5] border border-[#A6F4C5] text-[#027A48] text-xs font-bold flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <span>🎉 Success! The extracted rules have been published to your active Brand Rulebook!</span>
+          </div>
+        )}
+
         {compiledCandidates.length > 0 && (
           <div className="mt-6 pt-6 border-t border-[#F1E1D4]">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#382A20]">
-                Extracted Rules Ready for Verification ({compiledCandidates.length})
-              </h3>
-              <span className="text-[11px] text-[#027A48] font-bold">✓ Ready for Human Review</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#382A20]">
+                  Extracted Rules Ready for Verification ({compiledCandidates.length})
+                </h3>
+                <span className="text-[11px] text-[#027A48] font-bold">✓ Ready for Human Review</span>
+              </div>
+              <button
+                type="button"
+                onClick={handlePublishCompiled}
+                disabled={publishing}
+                className="px-4 py-2 rounded-xl bg-[#027A48] hover:bg-[#026038] text-white text-xs font-extrabold transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{publishing ? "Publishing to Rulebook..." : "✨ Add All to Official Rulebook"}</span>
+              </button>
             </div>
             <div className="space-y-3">
               {compiledCandidates.map((c, idx) => (

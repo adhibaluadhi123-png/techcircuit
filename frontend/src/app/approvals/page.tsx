@@ -31,10 +31,18 @@ export default function ApprovalsPage() {
   const [reason, setReason] = useState("");
   const [exceptionCategory, setExceptionCategory] = useState("Campaign Specific");
   const [receiptResult, setReceiptResult] = useState<any | null>(null);
+  const [approverId, setApproverId] = useState("usr-approver-01");
+  const [approverName, setApproverName] = useState("Arthur Pendelton (Authorized Approver)");
   const [copiedReceipt, setCopiedReceipt] = useState(false);
 
   useEffect(() => {
     loadQueue();
+    if (typeof window !== "undefined") {
+      const savedId = localStorage.getItem("canon_user_id");
+      const savedName = localStorage.getItem("canon_user_name");
+      if (savedId) setApproverId(savedId);
+      if (savedName) setApproverName(savedName);
+    }
   }, []);
 
   const loadQueue = () => {
@@ -64,12 +72,12 @@ export default function ApprovalsPage() {
         decisionCode,
         reason,
         exceptionCategory,
-        "usr-approver-01"
+        approverId
       );
       setReceiptResult({
         ...res,
         submission_title: selectedSub.title,
-        approver: "Arthur Pendelton (Authorized Approver)",
+        approver: approverName,
         timestamp: new Date().toISOString()
       });
       setDecisionModal({ open: false, type: null });
@@ -114,7 +122,7 @@ export default function ApprovalsPage() {
         <div className="flex items-center gap-2">
           <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#FFF0E2] text-[#C87539] border border-[#F5A66B]/30 flex items-center gap-2 shadow-2xs">
             <UserCheck className="w-4 h-4" />
-            <span>Reviewing as: Arthur Pendelton (Brand Lead)</span>
+            <span>Reviewing as: {approverName}</span>
           </span>
         </div>
       </div>

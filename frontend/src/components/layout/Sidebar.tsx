@@ -37,7 +37,8 @@ const NAV_ITEMS = [
   { name: "🎨 Photo & Logo Library", href: "/assets", icon: Palette },
   { name: "📊 Progress Charts", href: "/insights", icon: BarChart3 },
   { name: "📜 Golden Stamp Trail", href: "/audit", icon: ShieldCheck },
-  { name: "🔑 Sign In / Sign Up", href: "/login", icon: KeyRound },
+  { name: "✨ Create Account", href: "/login?tab=register", icon: UserCheck },
+  { name: "🔑 Sign In / Switch Role", href: "/login", icon: KeyRound },
   { name: "⚙️ AI Brain Settings", href: "/settings", icon: Cpu },
 ];
 
@@ -48,18 +49,48 @@ export function Sidebar() {
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  useEffect(() => {
+  const syncUser = () => {
     api.getUsers()
       .then((data) => {
         setUsers(data);
-        if (data.length > 0) {
-          const savedId = typeof window !== "undefined" ? localStorage.getItem("canon_user_id") : null;
-          const found = data.find((u) => u.id === savedId) || data.find((u) => u.role === "CREATOR") || data[0];
-          setCurrentUser(found);
+        const savedId = typeof window !== "undefined" ? localStorage.getItem("canon_user_id") : null;
+        const savedName = typeof window !== "undefined" ? localStorage.getItem("canon_user_name") : null;
+        const savedRole = typeof window !== "undefined" ? localStorage.getItem("canon_user_role") : null;
+        const savedEmail = typeof window !== "undefined" ? localStorage.getItem("canon_user_email") : null;
+
+        if (savedId) {
+          const found = data.find((u) => u.id === savedId);
+          if (found) {
+            setCurrentUser(found);
+          } else if (savedName && savedRole) {
+            setCurrentUser({
+              id: savedId,
+              email: savedEmail || "",
+              full_name: savedName,
+              role: savedRole as any,
+              workspace_id: "ws-apexdynamics-001"
+            });
+          }
+        } else if (data.length > 0) {
+          const defaultUser = data.find((u) => u.role === "CREATOR") || data[0];
+          setCurrentUser(defaultUser);
         }
       })
       .catch((err) => console.error("Error loading users:", err));
-  }, []);
+  };
+
+  useEffect(() => {
+    syncUser();
+
+    const handleUserEvent = () => syncUser();
+    window.addEventListener("storage", handleUserEvent);
+    window.addEventListener("canon_user_changed", handleUserEvent);
+
+    return () => {
+      window.removeEventListener("storage", handleUserEvent);
+      window.removeEventListener("canon_user_changed", handleUserEvent);
+    };
+  }, [pathname]);
 
   const handleUserChange = (u: UserType) => {
     setCurrentUser(u);
@@ -68,6 +99,7 @@ export function Sidebar() {
       localStorage.setItem("canon_user_role", u.role);
       localStorage.setItem("canon_user_name", u.full_name);
       localStorage.setItem("canon_user_email", u.email);
+      window.dispatchEvent(new Event("canon_user_changed"));
     }
   };
 
@@ -183,12 +215,21 @@ export function Sidebar() {
             <span className="text-[10px] font-bold text-[#8A7567] uppercase tracking-wider">
               Signed-In User
             </span>
-            <Link
-              href="/login"
-              className="text-[10px] text-[#C87539] font-bold hover:underline"
-            >
-              Switch Role
-            </Link>
+            <div className="flex items-center gap-1.5">
+              <Link
+                href="/login?tab=register"
+                className="text-[10px] text-[#027A48] font-bold hover:underline"
+              >
+                + Sign Up
+              </Link>
+              <span className="text-[#8A7567] text-[10px]">•</span>
+              <Link
+                href="/login"
+                className="text-[10px] text-[#C87539] font-bold hover:underline"
+              >
+                Switch
+              </Link>
+            </div>
           </div>
 
           {currentUser && (

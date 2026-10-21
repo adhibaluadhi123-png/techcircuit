@@ -60,25 +60,32 @@ export default function OverviewPage() {
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3">
             <Link
+              href="/login?tab=register"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#027A48] hover:bg-[#026038] text-white text-xs font-black transition-all shadow-sm hover:shadow-md"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>✨ Create Free Account</span>
+            </Link>
+            <Link
               href="/review"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-extrabold transition-all shadow-sm hover:shadow-md"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-extrabold transition-all shadow-sm hover:shadow-md"
             >
               <FileCheck2 className="w-4 h-4" />
               <span>Check My Story Now (It's Fun!) →</span>
             </Link>
             <Link
               href="/guide"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white hover:bg-[#FFF9F3] text-[#382A20] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
+              className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-white hover:bg-[#FFF9F3] text-[#382A20] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
             >
               <HelpCircle className="w-4 h-4 text-[#C87539]" />
-              <span>How It Works (Easy Guide)</span>
+              <span>How It Works (Guide)</span>
             </Link>
             <Link
               href="/login"
               className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-white hover:bg-[#FFF9F3] text-[#8A7567] hover:text-[#382A20] text-xs font-bold border border-[#F1E1D4] transition-all shadow-2xs"
             >
               <KeyRound className="w-4 h-4 text-[#C87539]" />
-              <span>Log In / Switch Account</span>
+              <span>Sign In / Switch</span>
             </Link>
           </div>
         </div>
