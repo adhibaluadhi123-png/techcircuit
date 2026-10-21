@@ -23,10 +23,6 @@ export default function InsightsPage() {
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadInsights();
-  }, []);
-
   const loadInsights = () => {
     setLoading(true);
     api.getInsights()
@@ -39,6 +35,10 @@ export default function InsightsPage() {
         setLoading(false);
       });
   };
+
+  useEffect(() => {
+    loadInsights();
+  }, []);
 
   const handleAcceptAmendment = async (id: string) => {
     setAcceptingId(id);

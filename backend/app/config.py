@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "CANON Brand Governance Platform"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+    ENVIRONMENT: str = "development"
+    BASE_DIR: Path = BASE_DIR
+
     
     # Database configuration
     # Default to local SQLite for lightweight local dev and automated tests
@@ -31,7 +34,21 @@ class Settings(BaseSettings):
     # Ingestion Limits
     MAX_UPLOAD_SIZE_MB: int = 15
     ALLOWED_EXTENSIONS: list[str] = [".pdf", ".docx", ".txt", ".png", ".jpg", ".jpeg"]
+    
+    # Brand Asset Management Storage
+    STORAGE_DIR: str = f"{BASE_DIR}/storage"
+    MAX_ASSET_UPLOAD_SIZE_MB: int = 25
+    ALLOWED_ASSET_EXTENSIONS: list[str] = [
+        ".png", ".jpg", ".jpeg", ".webp", ".svg",
+        ".pdf", ".docx", ".txt", ".ttf", ".woff", ".woff2"
+    ]
 
     model_config = ConfigDict(case_sensitive=True, env_file=".env", extra="ignore")
 
+    def validate_production_settings(self) -> None:
+        if self.ENVIRONMENT.lower() == "production":
+            if not self.SECRET_KEY or self.SECRET_KEY == "canon-hackathon-super-secret-key-change-in-production":
+                raise ValueError("FATAL SECURITY: Insecure default SECRET_KEY in production environment.")
+
 settings = Settings()
+settings.validate_production_settings()

@@ -36,6 +36,24 @@ def check_terminology_rules(
         pattern = rule.get("pattern")
         fail_example = rule.get("fail_example", "")
         
+        # Explicit canonical patterns for core deterministic brand rules
+        if not pattern:
+            rule_code = rule.get("rule_code")
+            if rule_code == "TERM-01":
+                pattern = r"\b(?:Legacy\s+Cloud|Apex\s+Cloud)\b"
+            elif rule_code == "TERM-02":
+                pattern = r"\b(?:100%\s+uptime\s+guaranteed|guaranteed\s+100%\s+uptime)\b"
+            elif rule_code == "NAME-01":
+                pattern = r"\b(?:cloudplatform|Cloud\s+platform|cloud\s+platform|apexdynamics|Apex\s+dynamics|apex\s+dynamics)\b"
+            elif rule_code == "TM-01":
+                pattern = r"\b(?:CloudPlatform|ApexDynamics|Apex\s+Core)(?![®™\u00AE\u2122])\b"
+            elif rule_code == "CLAIM-01":
+                pattern = r"\b(?:fastest\s+platform\s+in\s+the\s+world|undisputed\s+leader)\b"
+            elif rule_code == "LOGO-01":
+                pattern = r"\b(?:crowded\s+logo|unapproved\s+logo\s+variant|altered\s+logomark)\b"
+            elif rule_code == "LOGO-02":
+                pattern = r"\b(?:distorted\s+logo|recolored\s+logo|drop\s+shadow\s+on\s+logo)\b"
+
         # If no explicit regex pattern is provided, extract quoted terms or keywords from title/description
         if not pattern:
             # Check for quoted phrases in title or description (e.g. 'Apex Cloud', '100% uptime guaranteed')
@@ -46,8 +64,8 @@ def check_terminology_rules(
             prohibited_candidates = [p for p in quoted_phrases if p.lower() not in pass_ex.lower()]
             
             if prohibited_candidates:
-                clean_phrase = re.escape(prohibited_candidates[0].strip())
-                pattern = rf"\b{clean_phrase}\b"
+                sub_patterns = [re.escape(p.strip()) for p in prohibited_candidates]
+                pattern = rf"\b(?:{'|'.join(sub_patterns)})\b"
             elif fail_example and len(fail_example.strip()) <= 40:
                 clean_phrase = re.escape(fail_example.strip())
                 pattern = rf"\b{clean_phrase}\b"
@@ -55,8 +73,9 @@ def check_terminology_rules(
         if not pattern:
             continue
             
+        flags = 0 if rule.get("rule_code") == "NAME-01" else re.IGNORECASE
         try:
-            regex = re.compile(pattern, re.IGNORECASE)
+            regex = re.compile(pattern, flags)
             for match in regex.finditer(text):
                 # Extract concise surgical correction term if available
                 suggested = rule.get("pass_example") or None

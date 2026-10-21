@@ -1,849 +1,1383 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   Palette,
+  Image as ImageIcon,
+  FileText,
   CheckCircle2,
   XCircle,
+  AlertTriangle,
+  Clock,
+  Download,
+  Upload,
+  Plus,
+  Trash2,
+  Eye,
   ShieldCheck,
-  Sparkles,
-  Sliders,
+  Filter,
+  Search,
+  Grid,
+  List,
   Copy,
   Check,
-  Lightbulb,
-  Maximize2,
-  Download,
-  AlertTriangle,
-  Layers,
-  FileCode,
-  Tag,
-  ShieldAlert,
-  Info,
+  RefreshCw,
+  Sparkles,
   ExternalLink,
-  ChevronRight,
-  ZoomIn
+  ChevronDown,
+  Tag,
+  FileUp,
+  Sliders,
+  Type,
+  X,
+  Shield,
+  Layers,
+  ArrowRight,
+  FileCheck,
+  UserCheck,
+  Lock
 } from "lucide-react";
+import { api, BrandAsset, BrandAssetStats } from "@/lib/api";
 
-// Official Color Palette
-const PALETTE = [
-  { name: "Warm Canvas", hex: "#FFFBF7", role: "Primary background canvas", textDark: true },
-  { name: "Pure Surface", hex: "#FFFFFF", role: "Card backgrounds and module containers", textDark: true },
-  { name: "Apex Ochre", hex: "#C87539", role: "Primary brand identity signature", textDark: false },
-  { name: "Apricot Glow", hex: "#FF8A3D", role: "Interactive highlights and buttons", textDark: false },
-  { name: "Deep Charcoal", hex: "#201815", role: "Headings and primary brand typography", textDark: false },
-  { name: "Muted Cocoa", hex: "#7C6A5E", role: "Subtitles, secondary labels, and specs", textDark: false },
-  { name: "Warm Border", hex: "#F4E2D3", role: "Structural perimeters and dividers", textDark: true },
-  { name: "Warning Light", hex: "#FFF0E2", role: "Advisory panels and attention surfaces", textDark: true },
-];
+type CategoryFilter = "ALL" | "LOGOS" | "TYPOGRAPHY" | "COLORS" | "MARKETING" | "GUIDELINES" | "OTHER";
+type StatusFilter = "ALL" | "APPROVED" | "PENDING_APPROVAL" | "REJECTED" | "ARCHIVED";
+type ViewMode = "grid" | "list";
+type SortOption = "newest" | "oldest" | "name_asc" | "name_desc" | "updated";
 
-// Product Brand Taxonomy
-const PRODUCT_TAXONOMY = [
-  {
-    category: "Master Corporate Brand",
-    name: "ApexDynamics®",
-    symbol: "®",
-    status: "REGISTERED",
-    statusClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    deprecated: ["apexdynamics", "Apex Dynamics", "Apex dynamics"],
-    description: "Global corporate master brand. Always capitalized in CamelCase with capital A and capital D, without internal spaces.",
-    trademarkNotice: "USPTO Reg. No. 7,492,019 (Class 9 & 42)",
-  },
-  {
-    category: "Flagship Software Engine",
-    name: "Apex Core™",
-    symbol: "™",
-    status: "ACTIVE",
-    statusClass: "bg-blue-50 text-blue-700 border-blue-200",
-    deprecated: ["Apex Cloud", "Apex Platform", "ACE"],
-    description: "Core high-throughput telemetry and cloud orchestration engine. Renamed from 'Apex Cloud' in 2025.",
-    trademarkNotice: "Common law trademark of ApexDynamics Corp.",
-  },
-  {
-    category: "Edge Computing Hardware",
-    name: "Apex Pulse™",
-    symbol: "™",
-    status: "ACTIVE",
-    statusClass: "bg-blue-50 text-blue-700 border-blue-200",
-    deprecated: ["Apex Edge", "Pulse Module"],
-    description: "Tier-1 edge compute nodes providing sub-45ms roundtrip global telemetry.",
-    trademarkNotice: "Common law trademark of ApexDynamics Corp.",
-  },
-  {
-    category: "Developer Toolchain",
-    name: "Apex Studio™",
-    symbol: "™",
-    status: "ACTIVE",
-    statusClass: "bg-blue-50 text-blue-700 border-blue-200",
-    deprecated: ["Apex IDE", "DevStudio"],
-    description: "Web and CLI developer workbench for real-time model verification and rule authoring.",
-    trademarkNotice: "Common law trademark of ApexDynamics Corp.",
-  },
-  {
-    category: "Industrial IoT Hardware",
-    name: "Apex Sensor V2",
-    symbol: "—",
-    status: "HARDWARE SPEC",
-    statusClass: "bg-purple-50 text-purple-700 border-purple-200",
-    deprecated: ["Apex Sensor v1", "IoT Sensor 2024"],
-    description: "IP68 rated telemetry sensor module designed for industrial telemetry acquisition.",
-    trademarkNotice: "Hardware certification #HW-IP68-2026",
-  },
-];
+export default function BrandAssetsPage() {
+  const [assets, setAssets] = useState<BrandAsset[]>([]);
+  const [stats, setStats] = useState<BrandAssetStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-// Logo Do's & Don'ts
-const LOGO_RULES = [
-  {
-    title: "Clear Space Isolation",
-    type: "DO",
-    desc: "Maintain a clear zone around all four sides equal to the height of the primary 'A' monogram.",
-    tag: "Rule LOGO-01",
-  },
-  {
-    title: "Monochrome on Dark Finishes",
-    type: "DO",
-    desc: "Use the certified pure white vector mark on packaging finishes with luminance below 0.2.",
-    tag: "Rule LOGO-03",
-  },
-  {
-    title: "Never Stretch or Distort",
-    type: "DONT",
-    desc: "Lock the 4:1 width-to-height aspect ratio. Stretching or squashing is strictly prohibited.",
-    tag: "Rule LOGO-02",
-  },
-  {
-    title: "No Drop Shadows or 3D Bevels",
-    type: "DONT",
-    desc: "Do not apply drop shadows, glows, bevels, or gradient fills to the official mark.",
-    tag: "Rule LOGO-02",
-  },
-  {
-    title: "No Crowding by Other Logos",
-    type: "DONT",
-    desc: "Partner lockups must be separated by at least 2x the monogram width and a 1px separator.",
-    tag: "Rule LOGO-01",
-  },
-  {
-    title: "No Unauthorized Colors",
-    type: "DONT",
-    desc: "Never recolor the logomark in unapproved neon tints, secondary pastels, or red.",
-    tag: "Rule LOGO-02",
-  },
-];
+  // Filters & Controls
+  const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("ALL");
+  const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-export default function AssetLibraryPage() {
-  const [activeTab, setActiveTab] = useState<"logos" | "taxonomy" | "colors">("logos");
-  const [logoTheme, setLogoTheme] = useState<"light" | "dark" | "ochre">("light");
-  const [showClearspace, setShowClearspace] = useState(true);
+  // User RBAC State
+  const [userRole, setUserRole] = useState("CREATOR");
+  const [userName, setUserName] = useState("User");
+
+  // Modals
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showColorModal, setShowColorModal] = useState(false);
+  const [activeAsset, setActiveAsset] = useState<BrandAsset | null>(null);
+  const [auditResult, setAuditResult] = useState<any | null>(null);
+  const [auditingLogo, setAuditingLogo] = useState(false);
+
+  // Notifications
+  const [notification, setNotification] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
-  // WCAG Tool State
-  const [fgHex, setFgHex] = useState("#201815");
-  const [bgHex, setBgHex] = useState("#FFFBF7");
+  // Upload Form State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadName, setUploadName] = useState("");
+  const [uploadCategory, setUploadCategory] = useState<string>("LOGOS");
+  const [uploadDesc, setUploadDesc] = useState("");
+  const [uploadUsage, setUploadUsage] = useState("");
+  const [uploadVersion, setUploadVersion] = useState("1.0.0");
+  const [uploading, setUploading] = useState(false);
 
-  // WCAG Calculations
-  const getLuminance = (hex: string) => {
-    const clean = hex.replace("#", "");
-    const rgb = [
-      parseInt(clean.substr(0, 2), 16) / 255,
-      parseInt(clean.substr(2, 2), 16) / 255,
-      parseInt(clean.substr(4, 2), 16) / 255,
-    ];
-    const a = rgb.map((v) =>
-      v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
-    );
-    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+  // Color Form State
+  const [colorName, setColorName] = useState("");
+  const [colorHex, setColorHex] = useState("#C87539");
+  const [colorRole, setColorRole] = useState("Primary");
+  const [colorUsage, setColorUsage] = useState("");
+  const [savingColor, setSavingColor] = useState(false);
+
+  // Approval prompt
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showRejectPrompt, setShowRejectPrompt] = useState(false);
+
+  const canApprove = ["ADMIN", "BRAND_MANAGER", "APPROVER", "AUTHORISED_REVIEWER"].includes(userRole);
+
+  const showToast = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 4000);
   };
 
-  const getContrast = (hex1: string, hex2: string) => {
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedToken(label);
+    setTimeout(() => setCopiedToken(null), 2000);
+    showToast(`Copied ${label} to clipboard!`);
+  };
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const l1 = getLuminance(hex1);
-      const l2 = getLuminance(hex2);
-      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-      return Math.round(ratio * 100) / 100;
-    } catch {
-      return 1.0;
+      const [assetsData, statsData] = await Promise.all([
+        api.getAssets({
+          category: selectedCategory,
+          status: selectedStatus,
+          search: searchQuery,
+          sort: sortOption
+        }),
+        api.getAssetStats()
+      ]);
+      setAssets(assetsData);
+      setStats(statsData);
+    } catch (err: any) {
+      console.error("Failed to load brand assets:", err);
+      setError(err.message || "Failed to load brand assets from server.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const contrastRatio = getContrast(fgHex, bgHex);
-  const passesNormal = contrastRatio >= 4.5;
-  const passesLarge = contrastRatio >= 3.0;
-  const passesAAA = contrastRatio >= 7.0;
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedRole = localStorage.getItem("canon_user_role");
+      const storedName = localStorage.getItem("canon_user_name");
+      if (storedRole) setUserRole(storedRole);
+      if (storedName) setUserName(storedName);
+    }
+  }, []);
 
-  const copyText = (val: string, label: string) => {
-    navigator.clipboard.writeText(val);
-    setCopiedToken(label);
-    setTimeout(() => setCopiedToken(null), 1800);
+  useEffect(() => {
+    loadData();
+  }, [selectedCategory, selectedStatus, searchQuery, sortOption]);
+
+  // Handle File Upload
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadName.trim()) {
+      showToast("Please enter an asset name.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", uploadName.trim());
+      formData.append("category", uploadCategory);
+      if (uploadDesc.trim()) formData.append("description", uploadDesc.trim());
+      if (uploadUsage.trim()) formData.append("intended_usage", uploadUsage.trim());
+      formData.append("version", uploadVersion || "1.0.0");
+      if (uploadFile) {
+        formData.append("file", uploadFile);
+      }
+
+      await api.uploadAsset(formData);
+      showToast("🎉 Brand asset uploaded successfully!");
+      setShowUploadModal(false);
+      resetUploadForm();
+      loadData();
+    } catch (err: any) {
+      console.error("Upload failed:", err);
+      showToast(`Upload failed: ${err.message || "Server error"}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const downloadSVG = (name: string, svgContent: string) => {
-    const blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${name}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const resetUploadForm = () => {
+    setUploadFile(null);
+    setUploadName("");
+    setUploadCategory("LOGOS");
+    setUploadDesc("");
+    setUploadUsage("");
+    setUploadVersion("1.0.0");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // SVG Source Code strings
-  const primaryLogoSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" width="400" height="100">
-  <defs>
-    <linearGradient id="apexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF8A3D" />
-      <stop offset="100%" stop-color="#C87539" />
-    </linearGradient>
-  </defs>
-  <!-- Monogram A Icon -->
-  <polygon points="50,15 85,85 68,85 58,64 42,64 32,85 15,85" fill="url(#apexGrad)" />
-  <polygon points="50,34 45,52 55,52" fill="#FFFFFF" />
-  <circle cx="50" cy="50" r="42" fill="none" stroke="#C87539" stroke-width="2.5" stroke-dasharray="4 3" opacity="0.4" />
-  <!-- Wordmark -->
-  <text x="105" y="62" font-family="'Inter', sans-serif" font-size="34" font-weight="900" fill="#201815" letter-spacing="-0.5">Apex<tspan fill="#C87539">Dynamics</tspan></text>
-  <!-- Registered Trademark Symbol -->
-  <text x="352" y="42" font-family="'Inter', sans-serif" font-size="14" font-weight="800" fill="#7C6A5E">®</text>
-  <text x="108" y="80" font-family="'Inter', sans-serif" font-size="9" font-weight="700" fill="#7C6A5E" letter-spacing="2.5">PRECISION COMPUTING &amp; TELEMETRY</text>
-</svg>`;
+  // Handle Brand Color Submit
+  const handleColorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!colorName.trim() || !colorHex.trim()) {
+      showToast("Please provide both color name and hex code.");
+      return;
+    }
 
-  const monogramSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <defs>
-    <linearGradient id="monoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF8A3D" />
-      <stop offset="100%" stop-color="#C87539" />
-    </linearGradient>
-  </defs>
-  <rect width="100" height="100" rx="22" fill="#201815" />
-  <polygon points="50,20 80,80 66,80 58,62 42,62 34,80 20,80" fill="url(#monoGrad)" />
-  <polygon points="50,38 45,52 55,52" fill="#201815" />
-</svg>`;
+    setSavingColor(true);
+    try {
+      await api.addBrandColor({
+        name: colorName.trim(),
+        hex: colorHex.trim(),
+        role: colorRole,
+        intended_usage: colorUsage.trim() || undefined
+      });
+      showToast(`✓ Color '${colorName}' added and WCAG evaluated!`);
+      setShowColorModal(false);
+      setColorName("");
+      setColorHex("#C87539");
+      loadData();
+    } catch (err: any) {
+      console.error("Color save failed:", err);
+      showToast(`Failed to add color: ${err.message || "Invalid hex format"}`);
+    } finally {
+      setSavingColor(false);
+    }
+  };
+
+  // Approval Actions
+  const handleDecision = async (decision: "APPROVED" | "REJECTED") => {
+    if (!activeAsset) return;
+    if (decision === "REJECTED" && !rejectionReason.trim()) {
+      setShowRejectPrompt(true);
+      return;
+    }
+
+    try {
+      const updated = await api.approveAsset(
+        activeAsset.id,
+        decision,
+        decision === "REJECTED" ? rejectionReason.trim() : undefined
+      );
+      setActiveAsset(updated);
+      showToast(
+        decision === "APPROVED"
+          ? `✓ Asset "${updated.name}" approved and certified!`
+          : `Asset marked as REJECTED.`
+      );
+      setShowRejectPrompt(false);
+      setRejectionReason("");
+      loadData();
+    } catch (err: any) {
+      showToast(`Action failed: ${err.message || "Forbidden"}`);
+    }
+  };
+
+  const handleQuickApprove = async (asset: BrandAsset, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canApprove) {
+      showToast("Approval requires Approver role. Switch persona using the dropdown in the header.");
+      return;
+    }
+    try {
+      const updated = await api.approveAsset(asset.id, "APPROVED");
+      showToast(`✓ "${asset.name}" approved successfully!`);
+      loadData();
+      if (activeAsset?.id === asset.id) {
+        setActiveAsset(updated);
+      }
+    } catch (err: any) {
+      showToast(`Approval failed: ${err.message || "Forbidden"}`);
+    }
+  };
+
+  // Archive Action
+  const handleArchive = async (assetId: string) => {
+    if (!confirm("Are you sure you want to archive this asset? It will be excluded from active brand usage.")) return;
+    try {
+      await api.archiveAsset(assetId);
+      showToast("Asset successfully archived.");
+      if (activeAsset?.id === assetId) setActiveAsset(null);
+      loadData();
+    } catch (err: any) {
+      showToast(`Archive failed: ${err.message}`);
+    }
+  };
+
+  // Delete Action
+  const handleDelete = async (assetId: string) => {
+    if (!confirm("Permanently delete this brand asset? This cannot be undone.")) return;
+    try {
+      await api.deleteAsset(assetId);
+      showToast("Asset permanently deleted.");
+      if (activeAsset?.id === assetId) setActiveAsset(null);
+      loadData();
+    } catch (err: any) {
+      showToast(`Delete failed: ${err.message}`);
+    }
+  };
+
+  // Run Logo Audit
+  const handleRunLogoAudit = async (assetId: string) => {
+    setAuditingLogo(true);
+    try {
+      const result = await api.auditLogoAsset(assetId);
+      setAuditResult(result);
+      showToast(result.is_compliant ? "✓ Logo complies with brand clearspace & aspect ratio!" : "⚠️ Visual compliance issues detected.");
+    } catch (err: any) {
+      showToast(`Audit failed: ${err.message}`);
+    } finally {
+      setAuditingLogo(false);
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto py-2">
-      {/* ─── Header ─── */}
+      {/* Toast Notification */}
+      {notification && (
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-[#21160F] text-white text-xs font-semibold shadow-2xl flex items-center gap-2 border border-[#FB923C]/30 animate-in fade-in slide-in-from-bottom-2">
+          <Check className="w-4 h-4 text-[#F97316] shrink-0" />
+          <span>{notification}</span>
+        </div>
+      )}
+
+      {/* ── 1. Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74] uppercase tracking-wide">
-              Official Brand Kit
-            </span>
-            <span className="text-xs text-[#7C6A5E] font-semibold">ApexDynamics System Standards</span>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white flex items-center justify-center shadow-md shadow-orange-500/20 shrink-0">
+            <Palette className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#201815]">
-            Brand Assets, Logos & Taxonomy Studio
-          </h1>
-          <p className="text-sm text-[#7C6A5E] mt-1 max-w-2xl">
-            Vector logos, clearspace isolation boundaries, product naming architecture, and certified color standards for packaging, hardware markings, and digital applications.
-          </p>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF1E6] text-[#C2410C] border border-[#FDBA74] uppercase tracking-wider">
+                Brand Asset Vault
+              </span>
+              <span className="text-xs text-[#7C6A5E] font-medium">Brand Governance Workspace</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#21160F]">
+              Brand Assets
+            </h1>
+            <p className="text-sm text-[#7C6A5E] mt-0.5">
+              Manage your brand identity, approved assets, and visual standards.
+            </p>
+          </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white border border-[#F4E2D3] shadow-xs shrink-0">
+        {/* Action Buttons & Persona Switcher */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#F4E2D3] shadow-2xs">
+            <UserCheck className="w-4 h-4 text-[#EA580C] shrink-0" />
+            <div className="flex flex-col text-left">
+              <span className="text-[9px] font-bold text-[#7C6A5E] uppercase tracking-wider leading-none">Reviewer Persona</span>
+              <select
+                value={userRole}
+                onChange={async (e) => {
+                  const targetRole = e.target.value as any;
+                  try {
+                    await api.switchPersona(targetRole);
+                    setUserRole(targetRole);
+                    const name = localStorage.getItem("canon_user_name") || targetRole;
+                    setUserName(name);
+                    showToast(`Active persona switched to ${name} (${targetRole})`);
+                    loadData();
+                  } catch (err: any) {
+                    showToast(`Could not switch persona: ${err.message}`);
+                  }
+                }}
+                className="text-xs font-bold text-[#21160F] bg-transparent outline-none cursor-pointer py-0.5"
+                title="Switch active user persona to test RBAC approval workflows"
+              >
+                <option value="APPROVER">Arthur Pendelton (Approver)</option>
+                <option value="ADMIN">Marcus Vance (Admin)</option>
+                <option value="BRAND_MANAGER">Elena Rostova (Brand Manager)</option>
+                <option value="AUTHORISED_REVIEWER">Sofia Thorne (Reviewer)</option>
+                <option value="CREATOR">Liam Chen (Creator)</option>
+              </select>
+            </div>
+          </div>
+
           <button
-            onClick={() => setActiveTab("logos")}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              activeTab === "logos"
-                ? "bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] text-white shadow-xs"
-                : "text-[#7C6A5E] hover:text-[#201815] hover:bg-[#FFF5EC]"
-            }`}
+            onClick={() => setShowColorModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#FFFAF5] text-[#21160F] border border-[#F4E2D3] text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
-            Logos & Clearspace
+            <Palette className="w-4 h-4 text-[#EA580C]" />
+            <span>+ Add Brand Color</span>
           </button>
           <button
-            onClick={() => setActiveTab("taxonomy")}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              activeTab === "taxonomy"
-                ? "bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] text-white shadow-xs"
-                : "text-[#7C6A5E] hover:text-[#201815] hover:bg-[#FFF5EC]"
-            }`}
+            onClick={() => setShowUploadModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] hover:opacity-95 text-white text-xs font-bold transition-all shadow-sm hover:shadow-md cursor-pointer"
           >
-            Product Naming
+            <Upload className="w-4 h-4" />
+            <span>Upload Asset</span>
           </button>
-          <button
-            onClick={() => setActiveTab("colors")}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              activeTab === "colors"
-                ? "bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] text-white shadow-xs"
-                : "text-[#7C6A5E] hover:text-[#201815] hover:bg-[#FFF5EC]"
-            }`}
+          <Link
+            href="/approvals"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#FFFAF5] text-[#7C6A5E] hover:text-[#21160F] border border-[#F4E2D3] text-xs font-semibold transition-all"
           >
-            Color Palette & WCAG
-          </button>
+            <FileCheck className="w-4 h-4 text-[#027A48]" />
+            <span>Approvals Queue</span>
+          </Link>
+          <Link
+            href="/rulebook"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#FFFAF5] text-[#7C6A5E] hover:text-[#21160F] border border-[#F4E2D3] text-xs font-semibold transition-all"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Brand Rules</span>
+          </Link>
         </div>
       </div>
 
-      {/* ─── TAB 1: LOGOS & CLEARSPACE ─── */}
-      {activeTab === "logos" && (
-        <div className="space-y-6">
-          {/* Main Logo Display Card */}
-          <div className="p-6 rounded-3xl bg-white border border-[#F4E2D3] shadow-sm space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#F4E2D3]">
-              <div>
-                <h2 className="text-base font-black text-[#201815] flex items-center gap-2">
-                  <span>Primary Brand Lockup (Wordmark + Monogram)</span>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]">
-                    4:1 Aspect Ratio
-                  </span>
-                </h2>
-                <p className="text-xs text-[#7C6A5E] mt-0.5">
-                  Official lockup for packaging boxes, hardware datasheets, exhibition collateral, and headers.
-                </p>
-              </div>
-
-              {/* Surface Toggle */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-[#7C6A5E]">Surface:</span>
-                <div className="flex items-center gap-1 p-1 rounded-xl bg-[#FFF5EC] border border-[#F4E2D3]">
-                  <button
-                    onClick={() => setLogoTheme("light")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      logoTheme === "light" ? "bg-white text-[#201815] shadow-xs" : "text-[#7C6A5E]"
-                    }`}
-                  >
-                    Light Canvas
-                  </button>
-                  <button
-                    onClick={() => setLogoTheme("dark")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      logoTheme === "dark" ? "bg-[#201815] text-white shadow-xs" : "text-[#7C6A5E]"
-                    }`}
-                  >
-                    Dark Finish
-                  </button>
-                  <button
-                    onClick={() => setLogoTheme("ochre")}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      logoTheme === "ochre" ? "bg-[#C87539] text-white shadow-xs" : "text-[#7C6A5E]"
-                    }`}
-                  >
-                    Ochre Brand
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => setShowClearspace(!showClearspace)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition-all ${
-                    showClearspace
-                      ? "bg-[#FFF0E2] text-[#D95D0D] border-[#FDBA74]"
-                      : "bg-white text-[#7C6A5E] border-[#F4E2D3]"
-                  }`}
-                >
-                  {showClearspace ? "Clearspace: ON" : "Clearspace: OFF"}
-                </button>
-              </div>
-            </div>
-
-            {/* Interactive Preview Canvas */}
-            <div
-              className={`p-10 rounded-2xl flex items-center justify-center transition-colors duration-300 relative overflow-hidden ${
-                logoTheme === "light"
-                  ? "bg-[#FFFBF7]"
-                  : logoTheme === "dark"
-                  ? "bg-[#161210]"
-                  : "bg-[#C87539]"
-              }`}
-            >
-              {/* Clearspace boundary overlay */}
-              {showClearspace && (
-                <div className="absolute inset-4 border-2 border-dashed border-[#FF8A3D]/50 rounded-xl pointer-events-none flex flex-col justify-between p-2">
-                  <div className="flex justify-between text-[10px] font-mono text-[#D95D0D] font-bold">
-                    <span>1x 'A' Clear Margin</span>
-                    <span>Safe Zone Boundary (Rule LOGO-01)</span>
-                  </div>
-                  <div className="flex justify-between text-[10px] font-mono text-[#D95D0D] font-bold">
-                    <span>Minimum 24px digital / 12mm print</span>
-                    <span>1x 'A' Clear Margin</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Vector Logo Render */}
-              <div className="max-w-md w-full relative z-10 py-6">
-                <svg viewBox="0 0 400 100" className="w-full h-auto drop-shadow-xs">
-                  <defs>
-                    <linearGradient id="canvasApexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#FF8A3D" />
-                      <stop offset="100%" stopColor="#C87539" />
-                    </linearGradient>
-                  </defs>
-                  {/* Monogram A */}
-                  <polygon
-                    points="50,15 85,85 68,85 58,64 42,64 32,85 15,85"
-                    fill={logoTheme === "dark" ? "url(#canvasApexGrad)" : "#C87539"}
-                  />
-                  <polygon
-                    points="50,34 45,52 55,52"
-                    fill={logoTheme === "light" ? "#FFFBF7" : logoTheme === "dark" ? "#161210" : "#FFFFFF"}
-                  />
-                  {/* Wordmark */}
-                  <text
-                    x="105"
-                    y="62"
-                    fontFamily="'Inter', sans-serif"
-                    fontSize="34"
-                    fontWeight="900"
-                    fill={logoTheme === "light" ? "#201815" : "#FFFFFF"}
-                    letterSpacing="-0.5"
-                  >
-                    Apex<tspan fill="#FF8A3D">Dynamics</tspan>
-                  </text>
-                  {/* Registered Trademark symbol */}
-                  <text
-                    x="352"
-                    y="42"
-                    fontFamily="'Inter', sans-serif"
-                    fontSize="14"
-                    fontWeight="800"
-                    fill={logoTheme === "light" ? "#7C6A5E" : "#F4E2D3"}
-                  >
-                    ®
-                  </text>
-                  <text
-                    x="108"
-                    y="80"
-                    fontFamily="'Inter', sans-serif"
-                    fontSize="9"
-                    fontWeight="700"
-                    fill={logoTheme === "light" ? "#7C6A5E" : "#F4E2D3"}
-                    letterSpacing="2.5"
-                  >
-                    PRECISION COMPUTING &amp; TELEMETRY
-                  </text>
-                </svg>
-              </div>
-            </div>
-
-            {/* Action Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <div className="flex items-center gap-3 text-xs text-[#7C6A5E]">
-                <span className="font-bold text-[#201815]">Formats:</span>
-                <span className="bg-[#FFF5EC] px-2 py-0.5 rounded-lg border border-[#F4E2D3] font-mono">SVG (Vector)</span>
-                <span className="bg-[#FFF5EC] px-2 py-0.5 rounded-lg border border-[#F4E2D3] font-mono">PNG (Transparent)</span>
-                <span className="bg-[#FFF5EC] px-2 py-0.5 rounded-lg border border-[#F4E2D3] font-mono">EPS / PDF</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => copyText(primaryLogoSVG, "Primary Logo SVG")}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#FFF5EC] text-[#201815] text-xs font-bold border border-[#F4E2D3] transition-all shadow-xs"
-                >
-                  {copiedToken === "Primary Logo SVG" ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5 text-[#7C6A5E]" />
-                  )}
-                  <span>{copiedToken === "Primary Logo SVG" ? "Copied SVG!" : "Copy SVG Code"}</span>
-                </button>
-                <button
-                  onClick={() => downloadSVG("ApexDynamics_Horizontal_Lockup", primaryLogoSVG)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] text-white text-xs font-extrabold transition-all shadow-xs"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download SVG</span>
-                </button>
-              </div>
-            </div>
+      {/* ── 2. Live Database-Backed Overview Cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="editorial-card p-5 bg-white border border-[#F4E2D3] shadow-xs rounded-2xl">
+          <div className="flex items-center justify-between text-[#7C6A5E] mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Total Assets</span>
+            <Layers className="w-4 h-4 text-[#EA580C]" />
           </div>
-
-          {/* Secondary Marks: Icon Monogram & Wordmark Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Monogram App Icon */}
-            <div className="p-5 rounded-2xl bg-white border border-[#F4E2D3] shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-extrabold text-[#201815]">Monogram 'A' Icon</h3>
-                  <p className="text-xs text-[#7C6A5E]">Hardware badge, app icon & favicon (1:1 aspect)</p>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74]">
-                  1:1 Ratio
-                </span>
-              </div>
-
-              <div className="h-36 rounded-xl bg-[#FFFBF7] flex items-center justify-center p-4 border border-[#F4E2D3]">
-                <div className="w-20 h-20 shadow-md rounded-2xl overflow-hidden">
-                  <svg viewBox="0 0 100 100" className="w-full h-full">
-                    <rect width="100" height="100" rx="22" fill="#201815" />
-                    <polygon points="50,20 80,80 66,80 58,62 42,62 34,80 20,80" fill="#FF8A3D" />
-                    <polygon points="50,38 45,52 55,52" fill="#201815" />
-                  </svg>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-xs text-[#7C6A5E] font-medium">Min size: 16px × 16px</span>
-                <button
-                  onClick={() => downloadSVG("ApexDynamics_Monogram_Icon", monogramSVG)}
-                  className="inline-flex items-center gap-1 text-xs font-extrabold text-[#D95D0D] hover:underline"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export Icon SVG</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Inverted Monochromatic Mark */}
-            <div className="p-5 rounded-2xl bg-white border border-[#F4E2D3] shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-extrabold text-[#201815]">Monochrome Stamp (Laser / Silkscreen)</h3>
-                  <p className="text-xs text-[#7C6A5E]">For hardware chassis engraving and 1-color cartons</p>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-300">
-                  1-Color Only
-                </span>
-              </div>
-
-              <div className="h-36 rounded-xl bg-[#1E1B18] flex items-center justify-center p-4 border border-black/20">
-                <div className="max-w-xs w-full">
-                  <svg viewBox="0 0 400 100" className="w-full h-auto opacity-95">
-                    <polygon points="50,15 85,85 68,85 58,64 42,64 32,85 15,85" fill="#FFFFFF" />
-                    <polygon points="50,34 45,52 55,52" fill="#1E1B18" />
-                    <text x="105" y="62" fontFamily="'Inter', sans-serif" fontSize="34" fontWeight="900" fill="#FFFFFF" letterSpacing="-0.5">
-                      ApexDynamics
-                    </text>
-                    <text x="352" y="42" fontFamily="'Inter', sans-serif" fontSize="14" fontWeight="800" fill="#FFFFFF">
-                      ®
-                    </text>
-                  </svg>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-xs text-[#7C6A5E] font-medium">100% Solid White or Black</span>
-                <button
-                  onClick={() => copyText("ApexDynamics®", "Monochrome Copy")}
-                  className="inline-flex items-center gap-1 text-xs font-extrabold text-[#D95D0D] hover:underline"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy Label Text</span>
-                </button>
-              </div>
-            </div>
+          <div className="text-2xl sm:text-3xl font-black text-[#21160F]">
+            {stats ? stats.total_assets : "—"}
           </div>
-
-          {/* Logo Do's and Don'ts Matrix */}
-          <div className="p-6 rounded-3xl bg-white border border-[#F4E2D3] shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-black text-[#201815]">Logo Usage Directives: Do's &amp; Don'ts</h2>
-                <p className="text-xs text-[#7C6A5E]">Enforced deterministically by Rule LOGO-01 and LOGO-02</p>
-              </div>
-              <span className="text-xs font-bold text-[#D95D0D] bg-[#FFF2E7] px-2.5 py-1 rounded-xl border border-[#FDBA74]">
-                Strict Blocking Rules
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {LOGO_RULES.map((rule, idx) => (
-                <div
-                  key={idx}
-                  className={`p-4 rounded-2xl border transition-all ${
-                    rule.type === "DO"
-                      ? "bg-[#EDFDF5]/50 border-[#A6F4C5] hover:bg-[#EDFDF5]"
-                      : "bg-[#FFF0F0]/50 border-[#FECDCA] hover:bg-[#FFF0F0]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                        rule.type === "DO"
-                          ? "bg-[#027A48] text-white"
-                          : "bg-[#B42318] text-white"
-                      }`}
-                    >
-                      {rule.type === "DO" ? "✓ APPROVED PRACTICE" : "✕ STRICTLY PROHIBITED"}
-                    </span>
-                    <span className="text-[10px] font-bold text-[#7C6A5E] font-mono">{rule.tag}</span>
-                  </div>
-                  <h3 className="text-xs font-extrabold text-[#201815]">{rule.title}</h3>
-                  <p className="text-[11px] text-[#7C6A5E] mt-1 leading-relaxed">{rule.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <p className="text-[11px] text-[#7C6A5E] mt-1">Across all workspace categories</p>
         </div>
-      )}
 
-      {/* ─── TAB 2: PRODUCT BRAND TAXONOMY ─── */}
-      {activeTab === "taxonomy" && (
-        <div className="space-y-6">
-          <div className="p-5 rounded-2xl bg-white border border-[#F4E2D3] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#FFF2E7] flex items-center justify-center text-[#D95D0D] shrink-0 mt-0.5">
-                <Tag className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-sm font-extrabold text-[#201815]">
-                  Why does Product Naming Compliance matter?
-                </h2>
-                <p className="text-xs text-[#7C6A5E] leading-relaxed mt-0.5">
-                  Using deprecated product names (such as "Apex Cloud") confuses customers, damages SEO equity, and creates contractual ambiguities in enterprise SLAs. CANON ensures all product references map to official catalog taxonomy.
-                </p>
-              </div>
-            </div>
+        <div className="editorial-card p-5 bg-white border border-[#A6F4C5] shadow-xs rounded-2xl bg-gradient-to-br from-white to-[#EDFDF5]/40">
+          <div className="flex items-center justify-between text-[#027A48] mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Approved</span>
+            <CheckCircle2 className="w-4 h-4 text-[#027A48]" />
           </div>
-
-          <div className="p-6 rounded-3xl bg-white border border-[#F4E2D3] shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#F4E2D3]">
-              <h2 className="text-base font-black text-[#201815]">
-                Official Product Hierarchy Matrix (5 Certified Brands)
-              </h2>
-              <span className="text-xs text-[#7C6A5E]">Click any product name to copy</span>
-            </div>
-
-            <div className="divide-y divide-[#F4E2D3]">
-              {PRODUCT_TAXONOMY.map((item, idx) => (
-                <div key={idx} className="py-4 first:pt-0 last:pb-0 flex flex-col lg:flex-row lg:items-center justify-between gap-4 group">
-                  <div className="space-y-1 max-w-xl">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-[#7C6A5E] uppercase tracking-wider">
-                        {item.category}
-                      </span>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${item.statusClass}`}>
-                        {item.status}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => copyText(item.name, item.name)}
-                        className="text-lg font-black text-[#201815] group-hover:text-[#D95D0D] transition-colors flex items-center gap-1.5"
-                      >
-                        <span>{item.name}</span>
-                        {copiedToken === item.name ? (
-                          <Check className="w-4 h-4 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5 text-[#7C6A5E] opacity-0 group-hover:opacity-100 transition-opacity" />
-                        )}
-                      </button>
-                    </div>
-
-                    <p className="text-xs text-[#7C6A5E] leading-relaxed">{item.description}</p>
-                    <div className="text-[11px] font-mono text-[#7C6A5E]">{item.trademarkNotice}</div>
-                  </div>
-
-                  {/* Deprecated Names warning pill */}
-                  <div className="p-3 rounded-xl bg-[#FFF0F0] border border-[#FECDCA] lg:w-72 shrink-0">
-                    <div className="text-[10px] font-extrabold text-[#B42318] flex items-center gap-1 uppercase tracking-wide">
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Forbidden Aliases:</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      {item.deprecated.map((dep, dIdx) => (
-                        <span key={dIdx} className="text-[11px] font-mono font-bold text-[#B42318] line-through bg-white/80 px-2 py-0.5 rounded-md border border-[#FECDCA]">
-                          {dep}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="text-2xl sm:text-3xl font-black text-[#027A48]">
+            {stats ? stats.approved_assets : "—"}
           </div>
+          <p className="text-[11px] text-[#027A48] mt-1">Certified for external use</p>
         </div>
-      )}
 
-      {/* ─── TAB 3: COLORS & WCAG ─── */}
-      {activeTab === "colors" && (
-        <div className="space-y-6">
-          {/* Palette Grid */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-extrabold text-[#201815] uppercase tracking-wider">
-                Certified Master Palette (8 Official Tokens)
-              </h2>
+        <div className="editorial-card p-5 bg-white border border-[#FDBA74] shadow-xs rounded-2xl bg-gradient-to-br from-white to-[#FFF1E6]/40">
+          <div className="flex items-center justify-between text-[#C2410C] mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Pending Review</span>
+            <Clock className="w-4 h-4 text-[#EA580C]" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-[#C2410C]">
+            {stats ? stats.pending_approval : "—"}
+          </div>
+          <p className="text-[11px] text-[#C2410C] mt-1">Awaiting brand manager sign-off</p>
+        </div>
+
+        <div className="editorial-card p-5 bg-white border border-[#E2E8F0] shadow-xs rounded-2xl">
+          <div className="flex items-center justify-between text-[#64748B] mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider">Archived</span>
+            <Tag className="w-4 h-4 text-[#64748B]" />
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-[#64748B]">
+            {stats ? stats.archived_assets : "—"}
+          </div>
+          <p className="text-[11px] text-[#64748B] mt-1">Excluded from active use</p>
+        </div>
+      </div>
+
+      {/* ── 3. Search, Filter Chips & Category Navigation ── */}
+      <div className="space-y-4">
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { id: "ALL", label: "All Assets", icon: Layers },
+            { id: "LOGOS", label: "Logos & Monograms", icon: ImageIcon },
+            { id: "COLORS", label: "Color Palette & WCAG", icon: Palette },
+            { id: "TYPOGRAPHY", label: "Typography & Fonts", icon: Type },
+            { id: "MARKETING", label: "Marketing Templates", icon: Sparkles },
+            { id: "GUIDELINES", label: "Guidelines & PDFs", icon: FileText },
+            { id: "OTHER", label: "Other Assets", icon: Tag },
+          ].map((cat) => {
+            const Icon = cat.icon;
+            const isSelected = selectedCategory === cat.id;
+            const count = stats?.categories_summary?.[cat.id] ?? 0;
+            return (
               <button
-                onClick={() => {
-                  const css = `:root {\n${PALETTE.map(c => `  --color-${c.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}: ${c.hex}; /* ${c.role} */`).join("\n")}\n}`;
-                  copyText(css, "CSS Tokens");
-                }}
-                className="text-xs font-bold text-[#D95D0D] hover:underline flex items-center gap-1"
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id as CategoryFilter)}
+                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  isSelected
+                    ? "bg-[#21160F] text-white shadow-xs"
+                    : "bg-white text-[#7C6A5E] hover:text-[#21160F] border border-[#F4E2D3] hover:bg-[#FFFAF5]"
+                }`}
               >
-                <Copy className="w-3.5 h-3.5" />
-                <span>{copiedToken === "CSS Tokens" ? "Copied CSS!" : "Export CSS Tokens"}</span>
+                <Icon className={`w-3.5 h-3.5 ${isSelected ? "text-[#F97316]" : "text-[#7C6A5E]"}`} />
+                <span>{cat.label}</span>
+                {cat.id !== "ALL" && count > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-md text-[10px] ${isSelected ? "bg-white/20 text-white" : "bg-[#FFF1E6] text-[#C2410C]"}`}>
+                    {count}
+                  </span>
+                )}
               </button>
+            );
+          })}
+        </div>
+
+        {/* Search, Status, Sorting, and View Mode Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white border border-[#F4E2D3] shadow-xs">
+          <div className="flex flex-wrap items-center gap-3 flex-1">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="w-4 h-4 text-[#7C6A5E] absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search assets by name, format, or tag..."
+                className="editorial-input w-full pl-9 pr-3 py-1.5 text-xs"
+              />
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {PALETTE.map((color) => (
-                <div
-                  key={color.hex}
-                  className="rounded-2xl overflow-hidden bg-white border border-[#F4E2D3] shadow-xs hover:shadow-md transition-all group"
-                >
-                  <div
-                    className="h-20 w-full border-b border-[#F4E2D3] group-hover:scale-105 transition-transform duration-300"
-                    style={{ backgroundColor: color.hex }}
-                  />
-                  <div className="p-3.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#201815] truncate">{color.name}</span>
-                      <button
-                        onClick={() => copyText(color.hex, color.hex)}
-                        className="text-[#7C6A5E] hover:text-[#D95D0D] p-0.5"
-                        title="Copy hex code"
-                      >
-                        {copiedToken === color.hex ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                    <div className="font-mono text-xs text-[#D95D0D] font-black mt-0.5">{color.hex}</div>
-                    <div className="text-[11px] text-[#7C6A5E] mt-1 line-clamp-1">{color.role}</div>
-                  </div>
-                </div>
-              ))}
+            {/* Status Filter */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold text-[#7C6A5E]">Status:</span>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value as StatusFilter)}
+                className="editorial-input px-2.5 py-1.5 text-xs"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="APPROVED">✓ Approved Only</option>
+                <option value="PENDING_APPROVAL">⏳ Pending Approval</option>
+                <option value="REJECTED">✕ Rejected</option>
+                <option value="ARCHIVED">📦 Archived</option>
+              </select>
+            </div>
+
+            {/* Sort Order */}
+            <div className="flex items-center gap-1">
+              <span className="text-[11px] font-bold text-[#7C6A5E]">Sort:</span>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className="editorial-input px-2.5 py-1.5 text-xs"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="name_asc">Name (A-Z)</option>
+                <option value="name_desc">Name (Z-A)</option>
+                <option value="updated">Recently Updated</option>
+              </select>
             </div>
           </div>
 
-          {/* Interactive WCAG Contrast Validator */}
-          <div className="p-6 rounded-3xl bg-white border border-[#F4E2D3] shadow-sm space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-[#F4E2D3]">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-5 h-5 text-[#D95D0D]" />
-                <h2 className="text-base font-black text-[#201815]">
-                  Packaging & Display Contrast Validator (WCAG AA / AAA)
-                </h2>
-              </div>
-              <span className="text-xs text-[#7C6A5E] font-semibold">Real-Time Relative Luminance</span>
-            </div>
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 self-end sm:self-auto border border-[#F4E2D3] rounded-xl p-0.5 bg-[#FFFAF5]">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                viewMode === "grid" ? "bg-white text-[#21160F] shadow-xs" : "text-[#7C6A5E] hover:text-[#21160F]"
+              }`}
+              title="Grid View"
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                viewMode === "list" ? "bg-white text-[#21160F] shadow-xs" : "text-[#7C6A5E] hover:text-[#21160F]"
+              }`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Controls */}
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-[#201815]">Text & Logo Finish (Foreground)</label>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <input
-                      type="color"
-                      value={fgHex}
-                      onChange={(e) => setFgHex(e.target.value)}
-                      className="w-10 h-10 rounded-xl border border-[#F4E2D3] cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={fgHex}
-                      onChange={(e) => setFgHex(e.target.value)}
-                      className="p-2 text-xs font-mono font-bold w-32 uppercase rounded-xl border border-[#F4E2D3]"
-                    />
-                  </div>
-                </div>
+      {/* ── 4. Asset Library (Grid or List View) ── */}
+      {loading ? (
+        <div className="editorial-card p-16 text-center bg-white border border-[#F4E2D3] rounded-2xl">
+          <RefreshCw className="w-7 h-7 animate-spin text-[#EA580C] mx-auto mb-3" />
+          <div className="text-sm font-bold text-[#21160F]">Loading Brand Assets...</div>
+          <p className="text-xs text-[#7C6A5E] mt-1">Connecting to workspace asset storage</p>
+        </div>
+      ) : error ? (
+        <div className="editorial-card p-12 text-center bg-rose-50 border border-rose-200 rounded-2xl">
+          <AlertTriangle className="w-8 h-8 text-rose-600 mx-auto mb-2" />
+          <div className="text-sm font-bold text-rose-900">{error}</div>
+          <button
+            onClick={loadData}
+            className="mt-3 px-4 py-2 rounded-xl bg-white border border-rose-300 text-xs font-bold text-rose-800 hover:bg-rose-100"
+          >
+            Retry Loading
+          </button>
+        </div>
+      ) : assets.length === 0 ? (
+        /* ── Pristine Empty State ── */
+        <div className="editorial-card p-14 text-center bg-white border-2 border-dashed border-[#F4E2D3] rounded-2xl space-y-4">
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-[#FFF1E6] text-[#EA580C] flex items-center justify-center shadow-xs">
+            <Palette className="w-8 h-8" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1.5">
+            <h3 className="text-lg font-black text-[#21160F]">
+              No brand assets match your criteria
+            </h3>
+            <p className="text-xs text-[#7C6A5E] leading-relaxed">
+              {searchQuery || selectedCategory !== "ALL" || selectedStatus !== "ALL"
+                ? "Try clearing your search filters to view all workspace resources."
+                : "Your brand repository is ready. Upload your official vector logo, register primary brand colors, or upload brand identity guidelines."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] text-white text-xs font-bold shadow-xs hover:opacity-95 cursor-pointer"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload First Asset</span>
+            </button>
+            <button
+              onClick={() => setShowColorModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#F4E2D3] text-[#21160F] text-xs font-bold hover:bg-[#FFFAF5] cursor-pointer"
+            >
+              <Palette className="w-4 h-4 text-[#EA580C]" />
+              <span>Add Brand Color</span>
+            </button>
+          </div>
+        </div>
+      ) : viewMode === "grid" ? (
+        /* ── Grid View ── */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {assets.map((asset) => {
+            const isApproved = asset.status === "APPROVED";
+            const isPending = asset.status === "PENDING_APPROVAL";
+            const isColor = asset.category === "COLORS" && asset.metadata_json?.hex;
 
-                <div>
-                  <label className="text-xs font-bold text-[#201815]">Chassis / Packaging Background (Surface)</label>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <input
-                      type="color"
-                      value={bgHex}
-                      onChange={(e) => setBgHex(e.target.value)}
-                      className="w-10 h-10 rounded-xl border border-[#F4E2D3] cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={bgHex}
-                      onChange={(e) => setBgHex(e.target.value)}
-                      className="p-2 text-xs font-mono font-bold w-32 uppercase rounded-xl border border-[#F4E2D3]"
-                    />
-                  </div>
-                </div>
-
-                {/* 1-Click Brand Presets */}
-                <div className="pt-2">
-                  <span className="text-xs font-bold text-[#201815] block mb-2">
-                    1-Click Certified Brand Combinations:
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setFgHex("#201815"); setBgHex("#FFFBF7"); }}
-                      className="p-2.5 rounded-xl bg-[#FFFBF7] hover:bg-[#FFF5EC] border border-[#F4E2D3] text-left transition-colors"
-                    >
-                      <div className="text-xs font-bold text-[#201815]">Charcoal on Cream Canvas</div>
-                      <div className="text-[10px] text-[#027A48] font-bold">14.2:1 Ratio • AAA Flawless</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => { setFgHex("#C87539"); setBgHex("#FFFFFF"); }}
-                      className="p-2.5 rounded-xl bg-[#FFFBF7] hover:bg-[#FFF5EC] border border-[#F4E2D3] text-left transition-colors"
-                    >
-                      <div className="text-xs font-bold text-[#201815]">Apex Ochre on White</div>
-                      <div className="text-[10px] text-[#027A48] font-bold">4.8:1 Ratio • AA Pass</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => { setFgHex("#FFFFFF"); setBgHex("#C87539"); }}
-                      className="p-2.5 rounded-xl bg-[#FFFBF7] hover:bg-[#FFF5EC] border border-[#F4E2D3] text-left transition-colors"
-                    >
-                      <div className="text-xs font-bold text-[#201815]">White on Apex Ochre</div>
-                      <div className="text-[10px] text-[#027A48] font-bold">4.8:1 Ratio • AA Pass</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => { setFgHex("#F4E2D3"); setBgHex("#FFFFFF"); }}
-                      className="p-2.5 rounded-xl bg-[#FFFBF7] hover:bg-[#FFF5EC] border border-[#F4E2D3] text-left transition-colors"
-                    >
-                      <div className="text-xs font-bold text-[#201815]">Warm Border on White</div>
-                      <div className="text-[10px] text-[#B42318] font-bold">1.2:1 Ratio • Low Contrast Fail</div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Live Preview Render */}
+            return (
               <div
-                className="p-6 rounded-2xl border border-[#F4E2D3] flex flex-col justify-between shadow-xs transition-colors duration-200"
-                style={{ backgroundColor: bgHex }}
+                key={asset.id}
+                onClick={() => {
+                  setActiveAsset(asset);
+                  setAuditResult(null);
+                }}
+                className="editorial-card group bg-white border border-[#F4E2D3] hover:border-[#FB923C] rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
               >
-                <div style={{ color: fgHex }}>
-                  <div className="text-[10px] font-bold uppercase tracking-wider mb-2 opacity-80 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Real-Time Packaging & Label Preview</span>
-                  </div>
-                  <h3 className="text-xl font-black leading-snug">
-                    "Apex Core™ delivers continuous telemetry with zero compromise."
-                  </h3>
-                  <p className="text-xs mt-3 leading-relaxed opacity-90 font-medium">
-                    Rendered with strict relative luminance formula under WCAG 2.1 AA specifications. Packaging silkscreening and digital displays must satisfy this threshold.
-                  </p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-black/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
-                      Calculated Contrast
-                    </div>
-                    <div className="text-3xl font-black font-mono" style={{ color: fgHex }}>
-                      {contrastRatio} : 1
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 sm:text-right">
-                    <div>
-                      {passesAAA ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-lg border border-emerald-300">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                          <span>Triple-A (AAA): Certified</span>
-                        </span>
-                      ) : passesNormal ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-lg border border-emerald-300">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                          <span>Double-A (AA): Passes Standard</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-red-800 bg-red-100 px-3 py-1 rounded-lg border border-red-300">
-                          <XCircle className="w-4 h-4 text-red-700" />
-                          <span>Fail: Too Low for Production</span>
+                {/* Visual Preview Banner */}
+                <div className="relative h-44 bg-[#FFFBF7] border-b border-[#F4E2D3] flex items-center justify-center overflow-hidden p-4">
+                  {isColor ? (
+                    <div className="w-full h-full rounded-xl flex flex-col items-center justify-center text-white shadow-inner relative group-hover:scale-102 transition-transform" style={{ backgroundColor: asset.metadata_json.hex }}>
+                      <span className="text-sm font-black font-mono drop-shadow-sm">
+                        {asset.metadata_json.hex}
+                      </span>
+                      <span className="text-[11px] opacity-90 drop-shadow-sm">
+                        {asset.metadata_json.role || "Color Token"}
+                      </span>
+                      {asset.metadata_json.wcag_rating && (
+                        <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] font-bold bg-black/40 text-white backdrop-blur-xs">
+                          WCAG {asset.metadata_json.wcag_rating}
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] font-medium opacity-80" style={{ color: fgHex }}>
-                      {passesNormal ? "Approved for customer-facing materials" : "Adjust hex values to meet 4.5:1 ratio"}
+                  ) : asset.file_path && (asset.file_format === "PNG" || asset.file_format === "JPG" || asset.file_format === "JPEG" || asset.file_format === "WEBP" || asset.file_format === "SVG") ? (
+                    <img
+                      src={api.getAssetPreviewUrl(asset.id)}
+                      alt={asset.name}
+                      className="max-h-full max-w-full object-contain transition-transform group-hover:scale-105"
+                      onError={(e) => {
+                        // Fallback icon on broken image
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : asset.file_format === "PDF" ? (
+                    <div className="flex flex-col items-center gap-1.5 text-rose-600">
+                      <FileText className="w-12 h-12" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 px-2 py-0.5 rounded">PDF Document</span>
+                    </div>
+                  ) : asset.category === "TYPOGRAPHY" ? (
+                    <div className="flex flex-col items-center gap-1 text-[#21160F] p-2 text-center">
+                      <span className="text-3xl font-serif font-black">Aa Bb 123</span>
+                      <span className="text-xs font-semibold text-[#7C6A5E]">{asset.name}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-[#7C6A5E]">
+                      <Tag className="w-10 h-10 text-[#EA580C]" />
+                      <span className="text-xs font-bold">{asset.file_format || "SPEC"}</span>
+                    </div>
+                  )}
+
+                  {/* Status Pill on thumbnail */}
+                  <div className="absolute top-3 right-3">
+                    {isApproved ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5] shadow-xs flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>APPROVED</span>
+                      </span>
+                    ) : isPending ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF1E6] text-[#C2410C] border border-[#FDBA74] shadow-xs flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>PENDING</span>
+                      </span>
+                    ) : asset.status === "REJECTED" ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FEEBEA] text-[#B42318] border border-[#FECDCA] shadow-xs flex items-center gap-1">
+                        <XCircle className="w-3 h-3" />
+                        <span>REJECTED</span>
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-600 border border-slate-200">
+                        ARCHIVED
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Category Pill on thumbnail */}
+                  <div className="absolute top-3 left-3">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/90 text-[#21160F] border border-[#F4E2D3] shadow-xs backdrop-blur-xs">
+                      {asset.category}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-[#21160F] group-hover:text-[#EA580C] transition-colors line-clamp-1">
+                      {asset.name}
+                    </h3>
+                    <p className="text-xs text-[#7C6A5E] line-clamp-2 mt-0.5 leading-relaxed">
+                      {asset.description || asset.intended_usage || "Official verified workspace asset."}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#F4E2D3] flex items-center justify-between text-[11px] text-[#7C6A5E]">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-[#21160F]">{asset.file_format || "FILE"}</span>
+                      {asset.file_size_bytes > 0 && (
+                        <span>• {(asset.file_size_bytes / 1024).toFixed(0)} KB</span>
+                      )}
+                    </div>
+                    <span>v{asset.version}</span>
+                  </div>
+
+                  {isPending && canApprove && (
+                    <div className="pt-2 flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                        Needs Sign-Off
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleQuickApprove(asset, e)}
+                        className="px-2.5 py-1 rounded-lg bg-[#027A48] hover:bg-[#02663c] text-white text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Quick approve this asset"
+                      >
+                        <Check className="w-3 h-3" />
+                        <span>Approve</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* ── List View ── */
+        <div className="editorial-card bg-white border border-[#F4E2D3] rounded-2xl overflow-hidden shadow-xs divide-y divide-[#F4E2D3]">
+          {assets.map((asset) => {
+            const isApproved = asset.status === "APPROVED";
+            const isPending = asset.status === "PENDING_APPROVAL";
+            const isColor = asset.category === "COLORS" && asset.metadata_json?.hex;
+
+            return (
+              <div
+                key={asset.id}
+                onClick={() => {
+                  setActiveAsset(asset);
+                  setAuditResult(null);
+                }}
+                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#FFFAF5] transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  {/* Thumbnail / Swatch */}
+                  <div className="w-12 h-12 rounded-xl bg-[#FFFBF7] border border-[#F4E2D3] flex items-center justify-center shrink-0 overflow-hidden">
+                    {isColor ? (
+                      <div className="w-full h-full" style={{ backgroundColor: asset.metadata_json.hex }} />
+                    ) : asset.file_path && (asset.file_format === "PNG" || asset.file_format === "SVG") ? (
+                      <img src={api.getAssetPreviewUrl(asset.id)} alt={asset.name} className="max-h-full max-w-full object-contain" />
+                    ) : (
+                      <Tag className="w-5 h-5 text-[#EA580C]" />
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-extrabold text-[#21160F] truncate">{asset.name}</h3>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FFF1E6] text-[#EA580C]">
+                        {asset.category}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#7C6A5E] truncate mt-0.5">
+                      {asset.description || asset.intended_usage || "Verified workspace asset"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Metadata & Actions */}
+                <div className="flex items-center gap-4 shrink-0 text-xs text-[#7C6A5E]">
+                  <span className="font-mono">{asset.file_format || "SPEC"}</span>
+                  <span className="hidden sm:inline">v{asset.version}</span>
+
+                  {isApproved ? (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5] flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Approved</span>
+                    </span>
+                  ) : isPending ? (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#FFF1E6] text-[#C2410C] border border-[#FDBA74] flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>Pending</span>
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[#FEEBEA] text-[#B42318] border border-[#FECDCA]">
+                      {asset.status}
+                    </span>
+                  )}
+
+                  {isPending && canApprove && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleQuickApprove(asset, e)}
+                      className="px-2.5 py-1 rounded-lg bg-[#027A48] hover:bg-[#02663c] text-white text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Quick approve this asset"
+                    >
+                      <Check className="w-3 h-3" />
+                      <span>Approve</span>
+                    </button>
+                  )}
+
+                  <span className="text-[#EA580C] font-bold flex items-center gap-1">
+                    Details <ArrowRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── 5. Upload Asset Modal ── */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="editorial-card w-full max-w-lg p-6 bg-white shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#F4E2D3] pb-3">
+              <div>
+                <h2 className="text-base font-extrabold text-[#21160F]">
+                  Upload Official Brand Asset
+                </h2>
+                <span className="text-xs text-[#7C6A5E]">Store securely in Brand Governance Vault</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUploadModal(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUploadSubmit} className="space-y-3.5">
+              {/* File Dropzone inside Modal */}
+              <div>
+                <label className="text-xs font-bold text-[#21160F] block mb-1">
+                  Select File (.png, .svg, .jpg, .webp, .pdf, .ttf, .woff2)
+                </label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-[#F4E2D3] hover:border-[#F97316] rounded-xl p-5 text-center cursor-pointer bg-[#FFFAF5] transition-colors"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".png,.svg,.jpg,.jpeg,.webp,.pdf,.docx,.txt,.ttf,.woff,.woff2"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const f = e.target.files[0];
+                        setUploadFile(f);
+                        if (!uploadName) {
+                          setUploadName(f.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "));
+                        }
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  {uploadFile ? (
+                    <div className="space-y-1">
+                      <FileCheck className="w-6 h-6 text-emerald-600 mx-auto" />
+                      <div className="text-xs font-bold text-[#21160F]">{uploadFile.name}</div>
+                      <div className="text-[11px] text-[#7C6A5E]">
+                        {(uploadFile.size / 1024).toFixed(1)} KB • Ready
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <Upload className="w-6 h-6 text-[#EA580C] mx-auto" />
+                      <div className="text-xs font-bold text-[#21160F]">
+                        Click to browse or drag file here
+                      </div>
+                      <div className="text-[11px] text-[#7C6A5E]">Up to 25MB</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Asset Name */}
+              <div>
+                <label className="text-xs font-bold text-[#21160F]">Asset Name</label>
+                <input
+                  type="text"
+                  required
+                  value={uploadName}
+                  onChange={(e) => setUploadName(e.target.value)}
+                  placeholder="e.g. Primary Horizontal Vector Logo"
+                  className="editorial-input w-full p-2.5 text-xs mt-1"
+                />
+              </div>
+
+              {/* Category & Version */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-[#21160F]">Category</label>
+                  <select
+                    value={uploadCategory}
+                    onChange={(e) => setUploadCategory(e.target.value)}
+                    className="editorial-input w-full p-2.5 text-xs mt-1"
+                  >
+                    <option value="LOGOS">Logos &amp; Monograms</option>
+                    <option value="TYPOGRAPHY">Typography &amp; Fonts</option>
+                    <option value="MARKETING">Marketing &amp; Graphics</option>
+                    <option value="GUIDELINES">Guidelines &amp; PDFs</option>
+                    <option value="OTHER">Other Resources</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[#21160F]">Version</label>
+                  <input
+                    type="text"
+                    value={uploadVersion}
+                    onChange={(e) => setUploadVersion(e.target.value)}
+                    placeholder="1.0.0"
+                    className="editorial-input w-full p-2.5 text-xs mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="text-xs font-bold text-[#21160F]">Description &amp; Context</label>
+                <textarea
+                  value={uploadDesc}
+                  onChange={(e) => setUploadDesc(e.target.value)}
+                  placeholder="Official vector lockup for dark backgrounds with certified clearspace."
+                  className="editorial-input w-full p-2.5 text-xs mt-1 h-18"
+                />
+              </div>
+
+              {/* Intended Usage */}
+              <div>
+                <label className="text-xs font-bold text-[#21160F]">Intended Usage Guidance</label>
+                <input
+                  type="text"
+                  value={uploadUsage}
+                  onChange={(e) => setUploadUsage(e.target.value)}
+                  placeholder="e.g. Dark backgrounds, digital websites, 4:1 aspect ratio"
+                  className="editorial-input w-full p-2.5 text-xs mt-1"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#F4E2D3]">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(false)}
+                  className="px-4 py-2 rounded-xl bg-white border border-[#F4E2D3] text-xs font-semibold text-[#21160F] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] text-white text-xs font-bold shadow-xs hover:opacity-95 cursor-pointer disabled:opacity-50"
+                >
+                  {uploading ? "Saving..." : "Save Brand Asset"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 6. Add Brand Color Modal (With Live WCAG Calculator) ── */}
+      {showColorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="editorial-card w-full max-w-md p-6 bg-white shadow-2xl rounded-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#F4E2D3] pb-3">
+              <div>
+                <h2 className="text-base font-extrabold text-[#21160F]">
+                  Add Brand Color Token
+                </h2>
+                <span className="text-xs text-[#7C6A5E]">Automatic WCAG contrast calculation</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowColorModal(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleColorSubmit} className="space-y-3.5">
+              {/* Color Swatch Preview */}
+              <div className="p-4 rounded-xl text-center text-white font-mono font-bold shadow-inner flex flex-col items-center justify-center gap-1 transition-colors" style={{ backgroundColor: colorHex }}>
+                <span className="text-lg drop-shadow">{colorHex.toUpperCase()}</span>
+                <span className="text-xs opacity-90 drop-shadow">{colorRole} Role</span>
+              </div>
+
+              {/* Name & Hex Input */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-[#21160F]">Color Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={colorName}
+                    onChange={(e) => setColorName(e.target.value)}
+                    placeholder="e.g. Brand Terracotta"
+                    className="editorial-input w-full p-2.5 text-xs mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-[#21160F]">HEX Code</label>
+                  <div className="flex items-center gap-1 mt-1">
+                    <input
+                      type="color"
+                      value={colorHex.startsWith("#") ? colorHex : "#C87539"}
+                      onChange={(e) => setColorHex(e.target.value.toUpperCase())}
+                      className="w-8 h-8 rounded cursor-pointer border border-[#F4E2D3] p-0.5 bg-white"
+                    />
+                    <input
+                      type="text"
+                      required
+                      value={colorHex}
+                      onChange={(e) => setColorHex(e.target.value.toUpperCase())}
+                      className="editorial-input flex-1 p-2 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Role */}
+              <div>
+                <label className="text-xs font-bold text-[#21160F]">Semantic Role</label>
+                <select
+                  value={colorRole}
+                  onChange={(e) => setColorRole(e.target.value)}
+                  className="editorial-input w-full p-2.5 text-xs mt-1"
+                >
+                  <option value="Primary">Primary (Main brand identity)</option>
+                  <option value="Secondary">Secondary (Accent &amp; highlights)</option>
+                  <option value="Accent">Accent (CTAs &amp; buttons)</option>
+                  <option value="Background">Background Canvas</option>
+                  <option value="Text">Typography &amp; Headings</option>
+                </select>
+              </div>
+
+              {/* Usage Guidance */}
+              <div>
+                <label className="text-xs font-bold text-[#21160F]">Usage Guidance</label>
+                <input
+                  type="text"
+                  value={colorUsage}
+                  onChange={(e) => setColorUsage(e.target.value)}
+                  placeholder="e.g. Card containers, primary CTA buttons"
+                  className="editorial-input w-full p-2.5 text-xs mt-1"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#F4E2D3]">
+                <button
+                  type="button"
+                  onClick={() => setShowColorModal(false)}
+                  className="px-4 py-2 rounded-xl bg-white border border-[#F4E2D3] text-xs font-semibold text-[#21160F] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingColor}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#F97316] to-[#EA580C] text-white text-xs font-bold shadow-xs hover:opacity-95 cursor-pointer disabled:opacity-50"
+                >
+                  {savingColor ? "Evaluating..." : "Save Brand Color"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 7. Asset Details & Preview Drawer/Modal ── */}
+      {activeAsset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="editorial-card w-full max-w-2xl p-6 bg-white shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-[#F4E2D3] pb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#FFF1E6] text-[#EA580C]">
+                    {activeAsset.category}
+                  </span>
+                  <span className="text-xs text-[#7C6A5E]">Version {activeAsset.version}</span>
+                  {activeAsset.status === "APPROVED" ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]">
+                      ✓ APPROVED
+                    </span>
+                  ) : activeAsset.status === "PENDING_APPROVAL" ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFF1E6] text-[#C2410C] border border-[#FDBA74]">
+                      ⏳ PENDING APPROVAL
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FEEBEA] text-[#B42318] border border-[#FECDCA]">
+                      {activeAsset.status}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-xl font-black text-[#21160F]">{activeAsset.name}</h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveAsset(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Large Visual Preview */}
+            <div className="rounded-2xl border border-[#F4E2D3] p-6 bg-[#FFFBF7] flex items-center justify-center min-h-[220px]">
+              {activeAsset.category === "COLORS" && activeAsset.metadata_json?.hex ? (
+                <div className="w-full max-w-sm p-6 rounded-2xl text-white shadow-lg space-y-2 text-center" style={{ backgroundColor: activeAsset.metadata_json.hex }}>
+                  <div className="text-2xl font-black font-mono">{activeAsset.metadata_json.hex}</div>
+                  <div className="text-xs opacity-90">{activeAsset.metadata_json.rgb}</div>
+                  <div className="pt-2 flex justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(activeAsset.metadata_json.hex, "HEX")}
+                      className="px-3 py-1 rounded-lg bg-black/30 hover:bg-black/50 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Copy HEX
+                    </button>
+                  </div>
+                </div>
+              ) : activeAsset.file_path && (activeAsset.file_format === "PNG" || activeAsset.file_format === "JPG" || activeAsset.file_format === "JPEG" || activeAsset.file_format === "WEBP" || activeAsset.file_format === "SVG") ? (
+                <div className="space-y-3 text-center">
+                  <img
+                    src={api.getAssetPreviewUrl(activeAsset.id)}
+                    alt={activeAsset.name}
+                    className="max-h-56 max-w-full object-contain mx-auto shadow-xs rounded-lg"
+                  />
+                  {activeAsset.category === "LOGOS" && (
+                    <button
+                      type="button"
+                      onClick={() => handleRunLogoAudit(activeAsset.id)}
+                      disabled={auditingLogo}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-[#F4E2D3] hover:border-[#F97316] text-[#EA580C] text-xs font-bold shadow-xs cursor-pointer"
+                    >
+                      {auditingLogo ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                      <span>Run Visual Clearspace Audit</span>
+                    </button>
+                  )}
+                </div>
+              ) : activeAsset.file_format === "PDF" ? (
+                <div className="text-center space-y-2">
+                  <FileText className="w-16 h-16 text-rose-600 mx-auto" />
+                  <div className="text-sm font-bold text-[#21160F]">{activeAsset.file_name}</div>
+                  <a
+                    href={api.getAssetDownloadUrl(activeAsset.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#EA580C] underline"
+                  >
+                    Open PDF in new tab <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              ) : (
+                <div className="text-center space-y-1">
+                  <Tag className="w-12 h-12 text-[#EA580C] mx-auto" />
+                  <div className="text-sm font-bold text-[#21160F]">{activeAsset.name}</div>
+                  <div className="text-xs text-[#7C6A5E]">{activeAsset.file_format} specification</div>
+                </div>
+              )}
+            </div>
+
+            {/* Audit Results (if evaluated) */}
+            {auditResult && (
+              <div className={`p-4 rounded-xl border ${auditResult.is_compliant ? "bg-emerald-50 border-emerald-200 text-emerald-900" : "bg-amber-50 border-amber-200 text-amber-900"} space-y-2`}>
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  {auditResult.is_compliant ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-amber-600" />}
+                  <span>Visual Brand Audit Verdict: {auditResult.is_compliant ? "PASSED COMPLIANCE" : "VIOLATION DETECTED"}</span>
+                </div>
+                <div className="text-xs space-y-1">
+                  <div>Aspect Ratio: <strong>{auditResult.aspect_ratio}:1</strong> (Dimensions: {auditResult.width}x{auditResult.height}px)</div>
+                  {auditResult.visual_findings.map((f: any, i: number) => (
+                    <div key={i} className="text-rose-700 font-semibold">• [{f.rule_code}] {f.explanation}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Metadata Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-[#FFFAF5] p-4 rounded-xl border border-[#F4E2D3]">
+              <div>
+                <span className="text-[#7C6A5E] block">Format &amp; Size</span>
+                <span className="font-bold text-[#21160F]">
+                  {activeAsset.file_format || "SPEC"}{" "}
+                  {activeAsset.file_size_bytes > 0 && `(${(activeAsset.file_size_bytes / 1024).toFixed(0)} KB)`}
+                </span>
+              </div>
+              <div>
+                <span className="text-[#7C6A5E] block">Uploaded By</span>
+                <span className="font-bold text-[#21160F]">{activeAsset.uploader_name || "Creator"}</span>
+              </div>
+              <div>
+                <span className="text-[#7C6A5E] block">Date Added</span>
+                <span className="font-bold text-[#21160F]">{new Date(activeAsset.created_at).toLocaleDateString()}</span>
+              </div>
+
+              {activeAsset.intended_usage && (
+                <div className="col-span-2 sm:col-span-3 pt-2 border-t border-[#F4E2D3]">
+                  <span className="text-[#7C6A5E] block font-bold">Approved Intended Usage:</span>
+                  <p className="text-[#21160F] mt-0.5">{activeAsset.intended_usage}</p>
+                </div>
+              )}
+
+              {activeAsset.rejection_reason && (
+                <div className="col-span-2 sm:col-span-3 pt-2 border-t border-rose-200 text-rose-800">
+                  <span className="font-bold block">Rejection Feedback:</span>
+                  <p className="mt-0.5">{activeAsset.rejection_reason}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Prompt for Rejection Reason */}
+            {showRejectPrompt && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2 animate-in fade-in">
+                <label className="text-xs font-bold text-rose-900">
+                  Provide Rejection Reason for Creator:
+                </label>
+                <input
+                  type="text"
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="e.g. Logo padding violates LOGO-01 isolation clearspace."
+                  className="editorial-input w-full p-2 text-xs"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowRejectPrompt(false)}
+                    className="px-3 py-1 text-xs text-slate-600 hover:underline"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDecision("REJECTED")}
+                    className="px-3 py-1 bg-rose-600 text-white rounded-lg text-xs font-bold"
+                  >
+                    Confirm Rejection
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Official Compliance Certificate for Approved Assets */}
+            {activeAsset.status === "APPROVED" && (
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7] border border-[#86EFAC] space-y-2 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-[#027A48]" />
+                    <span className="text-xs font-black text-[#027A48] uppercase tracking-wider">
+                      Official Brand Compliance Certified
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#027A48] px-2 py-0.5 rounded-full bg-white border border-[#A6F4C5] shadow-2xs font-mono">
+                    {activeAsset.metadata_json?.receipt_id || `RCPT-ASSET-${activeAsset.id.substring(0, 8).toUpperCase()}`}
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#054E29] grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-[#A6F4C5]/60">
+                  <div>
+                    <span className="text-[#027A48] opacity-80 block text-[10px] font-bold uppercase">Certified Approver:</span>
+                    <strong className="text-[#054E29]">{activeAsset.approved_by_name || "Arthur Pendelton (Authorized Approver)"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[#027A48] opacity-80 block text-[10px] font-bold uppercase">Timestamp:</span>
+                    <strong className="text-[#054E29]">
+                      {activeAsset.approved_at ? new Date(activeAsset.approved_at).toLocaleString() : new Date().toLocaleString()}
+                    </strong>
+                  </div>
+                  {activeAsset.metadata_json?.approval_hash && (
+                    <div className="col-span-1 sm:col-span-2 pt-1">
+                      <span className="text-[#027A48] opacity-80 block text-[10px] font-bold uppercase">Cryptographic Content SHA-256:</span>
+                      <span className="font-mono text-[10px] text-[#027A48] bg-white/70 px-2 py-0.5 rounded border border-[#A6F4C5] inline-block break-all">
+                        {activeAsset.metadata_json.approval_hash}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Notice for Unprivileged Users Viewing Pending Assets */}
+            {!canApprove && activeAsset.status === "PENDING_APPROVAL" && (
+              <div className="p-3.5 rounded-xl bg-[#FFF9F3] border border-[#FDBA74] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <Lock className="w-4 h-4 text-[#D95D0D] shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-[#21160F]">Approval Authority Required</div>
+                    <div className="text-[11px] text-[#7C6A5E]">
+                      Current session: <strong className="text-[#21160F]">{userName} ({userRole})</strong>. Governance rules require sign-off from an Approver or Admin.
                     </div>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await api.switchPersona("APPROVER");
+                      setUserRole("APPROVER");
+                      setUserName("Arthur Pendelton");
+                      showToast("Switched to Arthur Pendelton (Authorized Approver)!");
+                      loadData();
+                    } catch (err: any) {
+                      showToast(`Could not switch role: ${err.message}`);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#EA580C] hover:bg-[#D95D0D] text-white text-xs font-bold transition-all shadow-2xs whitespace-nowrap cursor-pointer shrink-0"
+                >
+                  Sign Off as Approver
+                </button>
+              </div>
+            )}
+
+            {/* Actions Footer */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#F4E2D3]">
+              <div className="flex items-center gap-2">
+                {activeAsset.file_path && (
+                  <a
+                    href={api.getAssetDownloadUrl(activeAsset.id)}
+                    download
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#F4E2D3] hover:border-[#F97316] text-[#21160F] text-xs font-bold transition-all shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5 text-[#EA580C]" />
+                    <span>Download File</span>
+                  </a>
+                )}
+                {canApprove && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(activeAsset.id)}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Approval Buttons for Authorized Users */}
+              <div className="flex items-center gap-2">
+                {canApprove && activeAsset.status !== "APPROVED" && (
+                  <button
+                    type="button"
+                    onClick={() => handleDecision("APPROVED")}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#027A48] hover:bg-[#02663c] text-white text-xs font-bold shadow-xs cursor-pointer transition-all"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Approve Asset</span>
+                  </button>
+                )}
+                {canApprove && activeAsset.status !== "REJECTED" && (
+                  <button
+                    type="button"
+                    onClick={() => handleDecision("REJECTED")}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-rose-300 text-rose-700 hover:bg-rose-50 text-xs font-bold shadow-xs cursor-pointer transition-all"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Reject</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -1,17 +1,20 @@
 """Human Approval Workflow and Review Receipt Routes."""
+import hashlib
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.db.models import (
     ContentSubmission, ContentVersion, ApprovalDecision, ReviewReceipt,
-    User, Finding
+    User, Finding, BrandAsset
 )
 from app.schemas.domain import (
     ApprovalDecisionCreate, ApprovalDecisionResponse, ReviewReceiptResponse,
-    ContentSubmissionResponse
+    ContentSubmissionResponse, BrandAssetResponse, BrandAssetApproval
 )
+from app.core.security import get_current_user, require_roles
 from app.core.audit_chain import record_audit_event
 from app.config import settings
 
@@ -21,14 +24,14 @@ ALLOWED_APPROVER_ROLES = ["ADMIN", "BRAND_MANAGER", "AUTHORISED_REVIEWER", "APPR
 
 @router.get("/queue", response_model=List[ContentSubmissionResponse])
 def get_approval_queue(
-    workspace_id: str = settings.DEFAULT_WORKSPACE_ID,
+    current_user: User = Depends(require_roles(*ALLOWED_APPROVER_ROLES)),
     db: Session = Depends(get_db)
 ):
-    """Retrieve submissions currently awaiting reviewer or approver sign-off."""
+    """Retrieve submissions currently awaiting reviewer or approver sign-off in caller's workspace."""
     submissions = (
         db.query(ContentSubmission)
         .filter(
-            ContentSubmission.workspace_id == workspace_id,
+            ContentSubmission.workspace_id == current_user.workspace_id,
             ContentSubmission.current_status.in_(["SUBMITTED", "CHANGES_REQUESTED"])
         )
         .order_by(ContentSubmission.created_at.desc())
@@ -45,25 +48,25 @@ def get_approval_queue(
 def submit_approval_decision(
     submission_id: str,
     payload: ApprovalDecisionCreate,
-    approver_id: str = "usr-approver-01",
+    current_user: User = Depends(require_roles(*ALLOWED_APPROVER_ROLES)),
     db: Session = Depends(get_db)
 ):
     """
     Authorized human review decision:
+    - Derives approver identity from validated JWT credentials.
+    - Strictly isolates to caller's workspace.
     - Server-side role enforcement (AI cannot approve, Creator cannot self-approve).
     - If approved, issues a cryptographic Review Receipt bound to content SHA-256 hash.
     - Appends event to the tamper-evident audit ledger.
     """
-    sub = db.query(ContentSubmission).filter(ContentSubmission.id == submission_id).first()
+    sub = db.query(ContentSubmission).filter(
+        ContentSubmission.id == submission_id,
+        ContentSubmission.workspace_id == current_user.workspace_id
+    ).first()
     if not sub:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Submission not found.")
         
-    approver = db.query(User).filter(User.id == approver_id).first()
-    if not approver or approver.role not in ALLOWED_APPROVER_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Role '{approver.role if approver else 'None'}' is not authorized to grant approvals."
-        )
+    approver = current_user
 
     # Invariant: Creator cannot approve their own submission
     if approver.id == sub.creator_id and approver.role != "ADMIN":
@@ -155,3 +158,108 @@ def submit_approval_decision(
         "receipt_id": receipt.id if receipt else None,
         "content_hash": latest_version.content_hash
     }
+
+
+@router.get("/assets", response_model=List[BrandAssetResponse])
+def get_asset_approval_queue(
+    current_user: User = Depends(require_roles(*ALLOWED_APPROVER_ROLES)),
+    db: Session = Depends(get_db)
+):
+    """Retrieve brand assets currently awaiting reviewer or approver sign-off in caller's workspace."""
+    assets = (
+        db.query(BrandAsset)
+        .filter(
+            BrandAsset.workspace_id == current_user.workspace_id,
+            BrandAsset.status == "PENDING_APPROVAL"
+        )
+        .order_by(BrandAsset.created_at.desc())
+        .all()
+    )
+    return assets
+
+
+@router.post("/assets/{asset_id}", response_model=Dict[str, Any])
+def submit_asset_approval_decision(
+    asset_id: str,
+    payload: BrandAssetApproval,
+    current_user: User = Depends(require_roles(*ALLOWED_APPROVER_ROLES)),
+    db: Session = Depends(get_db)
+):
+    """
+    Authorized human review decision for Brand Assets:
+    - Derives approver identity from validated JWT credentials.
+    - Strictly isolates to caller's workspace.
+    - Issues cryptographic receipt hash and appends event to audit ledger.
+    """
+    asset = db.query(BrandAsset).filter(
+        BrandAsset.id == asset_id,
+        BrandAsset.workspace_id == current_user.workspace_id
+    ).first()
+
+    if not asset:
+        raise HTTPException(status_code=404, detail="Brand asset not found.")
+
+    decision_upper = payload.decision.upper().strip()
+    if decision_upper not in ["APPROVED", "REJECTED"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Decision must be either 'APPROVED' or 'REJECTED'."
+        )
+
+    now = datetime.now(timezone.utc)
+    asset.status = decision_upper
+    asset.approved_by_id = current_user.id
+    asset.approved_by_name = current_user.full_name
+    asset.approved_at = now
+    asset.rejection_reason = payload.reason if decision_upper == "REJECTED" else None
+    asset.updated_at = now
+
+    meta = dict(asset.metadata_json or {})
+    approval_hash = None
+    receipt_id = f"RCPT-ASSET-{asset.id[:8].upper()}"
+
+    if decision_upper == "APPROVED":
+        if asset.file_path:
+            full_path = Path(settings.BASE_DIR) / asset.file_path
+            if full_path.exists():
+                with open(full_path, "rb") as f:
+                    approval_hash = hashlib.sha256(f.read()).hexdigest()
+        if not approval_hash:
+            approval_hash = hashlib.sha256(f"{asset.id}:{now.isoformat()}".encode()).hexdigest()
+
+        meta["approval_hash"] = approval_hash
+        meta["receipt_id"] = receipt_id
+        meta["approved_by"] = current_user.full_name
+        meta["approved_at"] = now.isoformat()
+
+    asset.metadata_json = meta
+    db.commit()
+    db.refresh(asset)
+
+    record_audit_event(
+        db=db,
+        workspace_id=current_user.workspace_id,
+        event_type="ASSET_APPROVAL_DECISION",
+        actor_id=current_user.id,
+        actor_role=current_user.role,
+        details={
+            "asset_id": asset.id,
+            "name": asset.name,
+            "decision": decision_upper,
+            "reason": payload.reason,
+            "approver": current_user.email,
+            "receipt_id": receipt_id if decision_upper == "APPROVED" else None,
+            "content_hash": approval_hash
+        }
+    )
+
+    return {
+        "asset_id": asset.id,
+        "name": asset.name,
+        "decision": decision_upper,
+        "approver": current_user.full_name,
+        "status": asset.status,
+        "receipt_id": receipt_id if decision_upper == "APPROVED" else None,
+        "content_hash": approval_hash
+    }
+

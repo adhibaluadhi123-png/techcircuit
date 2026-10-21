@@ -1,60 +1,54 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BookOpen,
-  Plus,
   Play,
   CheckCircle2,
-  AlertCircle,
-  HelpCircle,
   Upload,
   FileText,
-  Filter,
-  Check,
-  X,
   Search,
   Sparkles,
-  Shield,
-  Lightbulb,
-  Info,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  X
 } from "lucide-react";
-import { api, Rulebook, Rule } from "@/lib/api";
+import { api, Rulebook } from "@/lib/api";
 
 const SAMPLE_GUIDELINES = [
   {
-    title: "Product Naming Architecture & Trademark Policy",
-    text: "Product Naming Directive: Always refer to the flagship enterprise engine as 'Apex Core™'. Under no circumstances should the deprecated name 'Apex Cloud' be used in marketing, sales, or public collateral. Capitalization must always be CamelCase 'ApexDynamics'."
+    title: "Product Naming & Trademarks",
+    text: "Product Naming Directive: Always refer to our product by its official trademarked name 'Cloud Platform™'. Under no circumstances should deprecated names like 'Legacy Suite' be used in marketing or public collateral. Capitalization must always be consistent."
   },
   {
-    title: "Logo Clearspace & Forbidden Treatments",
-    text: "Logo Usage Directive: The primary ApexDynamics mark must always maintain an isolation perimeter equal to the 'A' monogram height on all four sides. Never crowd, stretch, distort, or apply unapproved color fills or drop shadows to the official logomark."
+    title: "Logo Clearspace & Spacing",
+    text: "Logo Usage Directive: The primary brand logo must always maintain an isolation perimeter equal to the mark height on all four sides. Never crowd, stretch, distort, or apply unapproved color fills or drop shadows to the official logomark."
   },
   {
-    title: "Product Specifications & Benchmark Claims",
-    text: "Product Claims Policy: Never claim '100% uptime guaranteed'. All system reliability communications must cite our certified SLA of 99.98% availability. Any benchmark claim of being 'fastest' requires verifiable third-party certification."
+    title: "Uptime Guarantees & Metrics",
+    text: "Product Claims Policy: Never claim '100% uptime guaranteed'. All reliability communications must cite our certified SLA of 99.98% availability. Any customer metric claim must cite audited figures."
   }
 ];
 
 export default function RulebookPage() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [rulebook, setRulebook] = useState<Rulebook | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [compiling, setCompiling] = useState(false);
   const [pastedText, setPastedText] = useState("");
+  const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showTextInput, setShowTextInput] = useState(false);
+
   const [compiledCandidates, setCompiledCandidates] = useState<any[]>([]);
   const [testResults, setTestResults] = useState<Record<string, any>>({});
   const [testingRuleId, setTestingRuleId] = useState<string | null>(null);
   const [testingAll, setTestingAll] = useState(false);
   const [allTestsPassed, setAllTestsPassed] = useState<boolean | null>(null);
-  const [expandedGuide, setExpandedGuide] = useState(true);
-
-  useEffect(() => {
-    loadRulebook();
-  }, []);
+  const [publishing, setPublishing] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState(false);
 
   const loadRulebook = () => {
     setLoading(true);
@@ -69,8 +63,51 @@ export default function RulebookPage() {
       });
   };
 
-  const [publishing, setPublishing] = useState(false);
-  const [publishSuccess, setPublishSuccess] = useState(false);
+  useEffect(() => {
+    loadRulebook();
+  }, []);
+
+  const handleFileChange = (file: File) => {
+    setSelectedPdf(file);
+    setCompiledCandidates([]);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileChange(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleCompile = async () => {
+    if (!pastedText.trim() && !selectedPdf) return;
+    setCompiling(true);
+
+    try {
+      const res = await api.compileGuidelineDocument(pastedText || undefined, selectedPdf || undefined);
+      if (res && res.rules && res.rules.length > 0) {
+        setCompiledCandidates(res.rules);
+      } else {
+        alert("The AI analyzed the document but did not extract any actionable rule constraints. Please check the document content.");
+      }
+    } catch (err: any) {
+      console.error("Compilation error:", err);
+      alert(`Could not compile guidelines: ${err.message || err}`);
+    } finally {
+      setCompiling(false);
+    }
+  };
 
   const handlePublishCompiled = async () => {
     if (compiledCandidates.length === 0) return;
@@ -91,12 +128,12 @@ export default function RulebookPage() {
           ambiguity_status: r.ambiguity_status,
         })),
         ...compiledCandidates.map((c) => ({
-          rule_code: c.rule_code,
+          rule_code: c.rule_code || `RULE-${Math.floor(100 + Math.random() * 900)}`,
           title: c.title,
-          category: c.category || "Tone",
+          category: c.category || "Brand Guidelines",
           description: c.description || "",
           source_quote: c.source_quote || "",
-          source_section: c.source_section || "Compiled Guidelines",
+          source_section: c.source_section || "Compiled PDF",
           severity: c.severity || "BLOCKING",
           enforcement_type: c.enforcement_type || "DETERMINISTIC",
           pass_example: c.pass_example || null,
@@ -105,69 +142,40 @@ export default function RulebookPage() {
         }))
       ];
 
-      const formData = new FormData();
-      formData.append("title", "ApexDynamics Master Brand Rulebook");
-      const nextVer = `1.${(parseInt((rulebook?.version || "1.0.0").split(".")[1] || "0") + 1)}.0`;
-      formData.append("version", nextVer);
-      formData.append("rules_json", JSON.stringify(allRules));
+      const currentVerNum = parseInt((rulebook?.version || "1.0.0").split(".")[1] || "0");
+      const nextVer = `1.${currentVerNum + 1}.0`;
 
-      const res = await fetch("http://127.0.0.1:8000/api/v1/rulebooks/publish", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (res.ok) {
-        setPublishSuccess(true);
-        setCompiledCandidates([]);
-        setPastedText("");
-        loadRulebook();
-        setTimeout(() => setPublishSuccess(false), 5000);
-      }
-    } catch (err) {
+      await api.publishRulebook("Company Brand Rulebook", nextVer, allRules);
+      setPublishSuccess(true);
+      setCompiledCandidates([]);
+      setPastedText("");
+      setSelectedPdf(null);
+      loadRulebook();
+      setTimeout(() => setPublishSuccess(false), 5000);
+    } catch (err: any) {
       console.error("Publishing error:", err);
+      alert(`Failed to save rules: ${err.message || err}`);
     } finally {
       setPublishing(false);
     }
   };
 
-  const handleCompile = async () => {
-    if (!pastedText.trim()) return;
-    setCompiling(true);
-    const formData = new FormData();
-    formData.append("text", pastedText);
-
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/v1/rulebooks/compile", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      setCompiledCandidates(data.rules || []);
-    } catch (err) {
-      console.error("Compilation error:", err);
-    } finally {
-      setCompiling(false);
-    }
-  };
-
-  const handleRunTests = async (ruleId: string) => {
+  const handleRunRuleTest = async (ruleId: string) => {
     setTestingRuleId(ruleId);
     try {
       const res = await api.runRuleTests(ruleId);
       setTestResults((prev) => ({ ...prev, [ruleId]: res }));
     } catch (err) {
-      console.error("Error running test cases:", err);
+      console.error("Test error:", err);
     } finally {
       setTestingRuleId(null);
     }
   };
 
   const handleRunAllTests = async () => {
-    if (!rulebook || rulebook.rules.length === 0) return;
+    if (!rulebook?.rules) return;
     setTestingAll(true);
-    setAllTestsPassed(null);
     let allOk = true;
-
     for (const rule of rulebook.rules) {
       try {
         const res = await api.runRuleTests(rule.id);
@@ -181,7 +189,7 @@ export default function RulebookPage() {
     setTestingAll(false);
   };
 
-  const defaultCategories = ["Brand Naming", "Logo & Visual Identity", "Product Claims", "Brand Voice", "Color & Visual", "Visual"];
+  const defaultCategories = ["Brand Naming", "Logo & Visual Identity", "Product Claims", "Brand Voice", "Color & Visual"];
   const ruleCategories = (rulebook?.rules || []).map((r) => r.category).filter(Boolean);
   const categories = ["ALL", ...Array.from(new Set([...defaultCategories, ...ruleCategories]))];
 
@@ -197,24 +205,24 @@ export default function RulebookPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Friendly Header */}
+      {/* ── 1. Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center shadow-xs shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF8A3D] to-[#FF721B] text-white flex items-center justify-center shadow-xs shrink-0">
             <BookOpen className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-900 text-white uppercase tracking-wider">
-                Product &amp; Brand Rulebook
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74] uppercase tracking-wider">
+                Brand Rules Library
               </span>
               <span className="text-xs text-[#8A7567] font-medium">Version {rulebook?.version || "1.0.0"}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#1E1B4B]">
-              Brand &amp; Product Rulebook Studio
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#201815]">
+              Brand Rules &amp; Guidelines
             </h1>
-            <p className="text-sm text-[#64748B] mt-0.5">
-              Compiled brand guidelines, logo clearspace formulas, product naming architecture, and verified performance specs.
+            <p className="text-sm text-[#7C6A5E] mt-0.5">
+              Upload your company brand guide PDF. The AI reads it, learns the rules, and automatically enforces them.
             </p>
           </div>
         </div>
@@ -223,187 +231,272 @@ export default function RulebookPage() {
           <button
             onClick={handleRunAllTests}
             disabled={testingAll}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#027A48] hover:bg-[#02663c] text-white text-xs font-bold transition-all shadow-xs hover:shadow-md disabled:opacity-50 cursor-pointer"
           >
             <Play className={`w-4 h-4 fill-white ${testingAll ? "animate-spin" : ""}`} />
-            <span>{testingAll ? "Testing All Rules..." : "⚡ Run All Rule Tests (Instant Health Check)"}</span>
+            <span>{testingAll ? "Testing All Rules..." : "⚡ Run Rule Health Check"}</span>
           </button>
         </div>
       </div>
 
-      {/* Non-Technical Quick Guide Accordion */}
-      <div className="p-5 rounded-2xl bg-white border border-[#F1E1D4] shadow-xs">
-        <div
-          className="flex items-center justify-between cursor-pointer select-none"
-          onClick={() => setExpandedGuide(!expandedGuide)}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#FFF0E2] flex items-center justify-center text-[#C87539] shrink-0">
-              <Lightbulb className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-[#382A20]">
-                How does the Rulebook protect non-technical creators?
-              </h2>
-              <p className="text-xs text-[#8A7567]">
-                Click to {expandedGuide ? "collapse" : "expand"} the simple 3-step explanation
-              </p>
-            </div>
-          </div>
-          <button className="text-[#8A7567] hover:text-[#382A20] p-1">
-            {expandedGuide ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-          </button>
-        </div>
-
-        {expandedGuide && (
-          <div className="mt-4 pt-4 border-t border-[#F1E1D4] grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-[#382A20]">
-            <div className="p-3.5 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4]/70">
-              <span className="font-bold text-[#C87539] text-xs uppercase block mb-1">1. Exact Guideline Evidence</span>
-              <p className="text-[#8A7567] leading-relaxed">
-                Rules cannot be made up. Every rule quotes the official brand PDF or employee handbook word-for-word.
-              </p>
-            </div>
-            <div className="p-3.5 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4]/70">
-              <span className="font-bold text-[#C87539] text-xs uppercase block mb-1">2. Two Severity Types</span>
-              <p className="text-[#8A7567] leading-relaxed">
-                <strong className="text-[#B42318]">Blocking:</strong> Must be fixed before publishing.
-                <br />
-                <strong className="text-[#C87539]">Advisory:</strong> Helpful suggestion, never blocks your deadline.
-              </p>
-            </div>
-            <div className="p-3.5 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4]/70">
-              <span className="font-bold text-[#C87539] text-xs uppercase block mb-1">3. Automated Unit Testing</span>
-              <p className="text-[#8A7567] leading-relaxed">
-                Every rule comes with paired Pass & Fail examples. Click "Run Tests" anytime to confirm the rule works reliably.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Global Test Results Banner */}
+      {/* ── Test Suite Results Notification Banner ── */}
       {allTestsPassed !== null && (
-        <div className={`p-4 rounded-xl border flex items-center justify-between ${
-          allTestsPassed
-            ? "bg-[#EDFDF5] border-[#A6F4C5] text-[#027A48]"
-            : "bg-[#FEEBEA] border-[#FECDCA] text-[#B42318]"
-        }`}>
-          <div className="flex items-center gap-3">
-            {allTestsPassed ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-            <div>
-              <div className="text-xs font-bold">
-                {allTestsPassed ? "All Brand Rule Unit Tests PASSED! (100% Green)" : "Some Unit Tests Failed Evaluation"}
-              </div>
-              <div className="text-[11px] opacity-90">
-                {allTestsPassed
-                  ? "Every rule correctly flagged its violation sample and passed its compliant sample."
-                  : "Check the individual rule cards below for details."}
-              </div>
-            </div>
+        <div
+          className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between gap-3 animate-in fade-in ${
+            allTestsPassed
+              ? "bg-[#EDFDF5] border-[#A6F4C5] text-[#027A48]"
+              : "bg-[#FFF0F0] border-[#FECDCA] text-[#B42318]"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {allTestsPassed ? (
+              <CheckCircle2 className="w-5 h-5 text-[#027A48] shrink-0" />
+            ) : (
+              <X className="w-5 h-5 text-[#B42318] shrink-0" />
+            )}
+            <span>
+              {allTestsPassed
+                ? "All active rules passed health check verification suite successfully!"
+                : "Some active rules encountered issues during testing. Review individual rule results below."}
+            </span>
           </div>
           <button
+            type="button"
             onClick={() => setAllTestsPassed(null)}
-            className="text-xs underline hover:opacity-80"
+            className="text-xs opacity-70 hover:opacity-100 cursor-pointer underline"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Interactive Guideline Compiler Studio */}
-      <div className="editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs">
-        <div className="flex items-center justify-between mb-2">
+      {/* ── 2. Primary Feature: Upload Brand PDF to Learn Rules ── */}
+      <div className="editorial-card p-6 sm:p-8 bg-white border border-[#F1E1D4] space-y-5 shadow-xs">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#C87539]" />
-            <h2 className="text-base font-bold text-[#382A20]">
-              Turn Raw Guidelines into Active Rules (AI Compiler)
+            <Sparkles className="w-5 h-5 text-[#FF8A3D]" />
+            <h2 className="text-base font-black text-[#201815]">
+              Upload Brand Guidelines (AI Learns from PDF)
             </h2>
           </div>
-          <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#FFF0E2] text-[#C87539]">
-            Zero-Code Extraction
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74]">
+            Automated Extraction
           </span>
         </div>
-        <p className="text-xs text-[#8A7567] mb-4">
-          Have a new brand policy, naming standard, or style memo? Paste it here or choose a sample below. The system automatically turns it into a clear rule with pass/fail test examples.
+        <p className="text-xs text-[#7C6A5E] leading-relaxed">
+          Drop your company brand guidelines PDF, style book, or product naming guide. The AI reads the document, extracts enforceable rules with exact citations, and compiles them directly below.
         </p>
 
-        {/* 1-Click Samples */}
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-bold text-[#8A7567]">Try a sample policy:</span>
-          {SAMPLE_GUIDELINES.map((s, idx) => (
-            <button
-              key={idx}
-              onClick={() => setPastedText(s.text)}
-              className="px-2.5 py-1 rounded-lg bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-[#C87539] text-[11px] font-semibold transition-colors"
-            >
-              + {s.title}
-            </button>
-          ))}
-        </div>
-
-        <textarea
-          aria-label="Brand guideline text to compile"
-          value={pastedText}
-          onChange={(e) => setPastedText(e.target.value)}
-          placeholder="Paste brand guideline text here..."
-          className="editorial-input w-full h-24 p-3 text-xs leading-relaxed font-sans"
+        {/* PDF File Dropzone */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.txt"
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              handleFileChange(e.target.files[0]);
+            }
+          }}
+          className="hidden"
+          id="guideline-pdf-input"
         />
 
-        <div className="mt-3 flex items-center justify-between">
-          <button
-            onClick={() => setPastedText("")}
-            className="text-xs text-[#8A7567] hover:text-[#382A20]"
+        {!selectedPdf ? (
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`p-8 rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-2.5 ${
+              isDragging
+                ? "border-[#FF8A3D] bg-[#FFF5EC]"
+                : "border-[#F4E2D3] bg-[#FFFBF7] hover:border-[#FF8A3D] hover:bg-[#FFF9F3]"
+            }`}
           >
-            Clear Text
-          </button>
-          <button
-            onClick={handleCompile}
-            disabled={compiling || !pastedText.trim()}
-            className="px-4 py-2 rounded-xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-bold disabled:opacity-50 transition-all shadow-xs"
-          >
-            {compiling ? "Compiling into Testable Rules..." : "⚡ Compile into Active Rules"}
-          </button>
-        </div>
+            <div className="w-12 h-12 rounded-xl bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74] flex items-center justify-center shadow-xs">
+              <Upload className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs font-extrabold text-[#201815]">
+                Drag &amp; drop Brand Guidelines PDF here
+              </p>
+              <p className="text-[11px] text-[#7C6A5E] mt-0.5">
+                Supports PDF (.pdf), Word (.docx), or Text (.txt)
+              </p>
+            </div>
+            <button
+              type="button"
+              className="px-3.5 py-1.5 rounded-xl bg-white border border-[#FDBA74] text-[#D95D0D] text-xs font-bold shadow-xs hover:bg-[#FFF5EC] transition-all"
+            >
+              Browse Brand PDF
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-[#EDFDF5] border border-[#A6F4C5] flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white border border-[#A6F4C5] text-[#027A48] flex items-center justify-center shadow-xs shrink-0">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-xs font-extrabold text-[#201815] flex items-center gap-2">
+                  <span>{selectedPdf.name}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#027A48] border border-[#A6F4C5]">
+                    READY
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#7C6A5E]">
+                  {(selectedPdf.size / 1024).toFixed(1)} KB · Ready to compile into rules
+                </div>
+              </div>
+            </div>
 
-        {/* Compiled Candidate Preview */}
-        {publishSuccess && (
-          <div className="mt-4 p-4 rounded-xl bg-[#EDFDF5] border border-[#A6F4C5] text-[#027A48] text-xs font-bold flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            <span>🎉 Success! The extracted rules have been published to your active Brand Rulebook!</span>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPdf(null);
+                setCompiledCandidates([]);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
+              className="p-1.5 rounded-lg text-[#7C6A5E] hover:text-[#B42318] hover:bg-white transition-all cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
-        {compiledCandidates.length > 0 && (
-          <div className="mt-6 pt-6 border-t border-[#F1E1D4]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[#382A20]">
-                  Extracted Rules Ready for Verification ({compiledCandidates.length})
-                </h3>
-                <span className="text-[11px] text-[#027A48] font-bold">✓ Ready for Human Review</span>
+        {/* Collapsible Text Alternative */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowTextInput(!showTextInput)}
+            className="text-xs font-bold text-[#D95D0D] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>{showTextInput ? "Hide direct text box" : "+ Or paste brand guideline text directly"}</span>
+            {showTextInput ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+
+          {showTextInput && (
+            <div className="mt-3 space-y-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-[#7C6A5E]">Sample rule:</span>
+                {SAMPLE_GUIDELINES.map((s, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setPastedText(s.text);
+                      setSelectedPdf(null);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-[#FFF9F3] hover:bg-[#FFF0E2] border border-[#F1E1D4] text-[#D95D0D] text-[11px] font-semibold transition-colors"
+                  >
+                    + {s.title}
+                  </button>
+                ))}
               </div>
-              <button
-                type="button"
-                onClick={handlePublishCompiled}
-                disabled={publishing}
-                className="px-4 py-2 rounded-xl bg-[#027A48] hover:bg-[#026038] text-white text-xs font-extrabold transition-all shadow-xs disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{publishing ? "Publishing to Rulebook..." : "✨ Add All to Official Rulebook"}</span>
-              </button>
+
+              <textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Paste brand guidelines, logo usage rules, or naming policies here..."
+                className="editorial-input w-full h-24 p-3 text-xs leading-relaxed"
+              />
             </div>
+          )}
+        </div>
+
+        {/* Action Button */}
+        <div className="pt-2 flex items-center justify-between border-t border-[#F4E2D3]">
+          <span className="text-xs text-[#7C6A5E]">
+            {selectedPdf ? `Selected file: ${selectedPdf.name}` : pastedText ? "Text ready to compile" : "Upload a PDF or paste text above"}
+          </span>
+
+          <button
+            type="button"
+            onClick={handleCompile}
+            disabled={compiling || (!selectedPdf && !pastedText.trim())}
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] hover:from-[#FF9952] hover:to-[#E8630D] text-white text-xs font-extrabold shadow-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-40"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>{compiling ? "AI is Learning & Compiling..." : "Learn & Compile Rules from PDF"}</span>
+          </button>
+        </div>
+
+        {/* Success Banner */}
+        {publishSuccess && (
+          <div className="p-4 rounded-xl bg-[#EDFDF5] border border-[#A6F4C5] text-[#027A48] text-xs font-bold flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-5 h-5 text-[#027A48]" />
+            <span>Success! The learned rules have been saved and activated into your Brand Rulebook!</span>
+          </div>
+        )}
+
+        {/* ── 3. Extracted Rules Displayed Directly Down Below ── */}
+        {compiledCandidates.length > 0 && (
+          <div className="mt-6 pt-6 border-t border-[#F4E2D3] space-y-4 animate-in fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-extrabold text-[#201815] flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#027A48]" />
+                  <span>Learned Rules from Document ({compiledCandidates.length})</span>
+                </h3>
+                <p className="text-xs text-[#7C6A5E] mt-0.5">
+                  Review the extracted rules below, then click &ldquo;Save &amp; Activate&rdquo; to add them to your brand book.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCompiledCandidates([])}
+                  className="px-3 py-1.5 rounded-lg border border-[#F4E2D3] text-xs font-bold text-[#7C6A5E] hover:bg-slate-50 cursor-pointer"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePublishCompiled}
+                  disabled={publishing}
+                  className="px-5 py-2 rounded-xl bg-[#027A48] hover:bg-[#026038] text-white text-xs font-black transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{publishing ? "Saving Rules..." : "Save & Activate These Rules"}</span>
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-3">
               {compiledCandidates.map((c, idx) => (
-                <div key={idx} className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] text-xs">
+                <div key={idx} className="p-4 rounded-2xl bg-[#FFF9F3] border border-[#FDBA74] text-xs space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#382A20]">{c.rule_code} — {c.title}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white text-[#C87539] border border-[#F1E1D4]">
-                      {c.ambiguity_status || "CLEAR"}
+                    <span className="font-extrabold text-[#201815] text-sm">
+                      {c.rule_code || `RULE-${idx + 1}`} — {c.title}
+                    </span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-white text-[#D95D0D] border border-[#FDBA74]">
+                      {c.category || "Brand Rule"}
                     </span>
                   </div>
-                  <p className="mt-2 text-[#8A7567] italic bg-white p-2.5 rounded-lg border border-[#F1E1D4]">
-                    Source Quote: "{c.source_quote}"
-                  </p>
+
+                  <p className="text-xs text-[#201815]">{c.description}</p>
+
+                  {c.source_quote && (
+                    <div className="p-2.5 rounded-xl bg-white border border-[#F4E2D3] text-[11px] text-[#7C6A5E]">
+                      <strong className="text-[#201815]">Extracted Quote: </strong>
+                      &ldquo;{c.source_quote}&rdquo;
+                    </div>
+                  )}
+
+                  {(c.pass_example || c.fail_example) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {c.pass_example && (
+                        <div className="p-2 rounded-lg bg-[#EDFDF5] text-[#027A48] text-[11px]">
+                          <strong>Pass: </strong>{c.pass_example}
+                        </div>
+                      )}
+                      {c.fail_example && (
+                        <div className="p-2 rounded-lg bg-[#FFF0F0] text-[#B42318] text-[11px]">
+                          <strong>Fail: </strong>{c.fail_example}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -411,185 +504,116 @@ export default function RulebookPage() {
         )}
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="space-y-3">
+      {/* ── 4. Active Rules List ── */}
+      <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Category Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-            {categories.map((cat) => {
-              const count = cat === "ALL"
-                ? (rulebook?.rules.length || 0)
-                : (rulebook?.rules.filter((r) => r.category === cat).length || 0);
-
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 ${
-                    selectedCategory === cat
-                      ? "bg-[#C87539] text-white shadow-xs"
-                      : "bg-white text-[#382A20] border border-[#F1E1D4] hover:bg-[#FFF9F3]"
-                  }`}
-                >
-                  <span>{cat}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                    selectedCategory === cat ? "bg-white/20 text-white" : "bg-[#FFF0E2] text-[#C87539]"
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+          <div>
+            <h2 className="text-lg font-black text-[#201815]">
+              Active Brand Rules ({filteredRules.length})
+            </h2>
+            <p className="text-xs text-[#7C6A5E]">
+              These rules are actively evaluated on all uploaded marketing documents and copy.
+            </p>
           </div>
 
-          {/* Search Input */}
+          {/* Search Box */}
           <div className="relative w-full sm:w-64">
-            <Search className="w-3.5 h-3.5 text-[#8A7567] absolute left-3 top-3" />
+            <Search className="w-3.5 h-3.5 text-[#7C6A5E] absolute left-3 top-3" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search rules by keyword..."
-              className="editorial-input w-full pl-8 pr-3 py-2 text-xs"
+              placeholder="Search active rules..."
+              className="editorial-input w-full pl-9 pr-3 py-2 text-xs"
             />
           </div>
         </div>
-      </div>
 
-      {/* Rule Cards */}
-      <div className="grid grid-cols-1 gap-5">
-        {filteredRules.length === 0 ? (
-          <div className="editorial-card p-12 text-center bg-white border border-[#F1E1D4]">
-            <BookOpen className="w-8 h-8 text-[#8A7567] mx-auto mb-2 opacity-50" />
-            <div className="text-sm font-bold text-[#382A20]">No matching rules found</div>
-            <p className="text-xs text-[#8A7567] mt-1">Try clearing your search query or selecting "ALL" categories.</p>
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {categories.map((cat) => {
+            const count = cat === "ALL"
+              ? (rulebook?.rules.length || 0)
+              : (rulebook?.rules.filter((r) => r.category === cat).length || 0);
+
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                  selectedCategory === cat
+                    ? "bg-[#FF8A3D] text-white shadow-xs"
+                    : "bg-white text-[#201815] border border-[#F4E2D3] hover:bg-[#FFF9F3]"
+                }`}
+              >
+                <span>{cat}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  selectedCategory === cat ? "bg-white/20 text-white" : "bg-[#FFF2E7] text-[#D95D0D]"
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Rules Grid */}
+        {loading && !rulebook ? (
+          <div className="p-12 text-center text-xs text-[#7C6A5E] bg-white border border-[#F4E2D3] rounded-2xl col-span-2">
+            Loading brand rulebook...
           </div>
         ) : (
-          filteredRules.map((rule) => {
-            const testResult = testResults[rule.id];
-            const isBlocking = rule.severity === "BLOCKING";
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredRules.map((rule) => {
+            const isTesting = testingRuleId === rule.id;
+            const res = testResults[rule.id];
 
             return (
               <div
                 key={rule.id}
-                className="editorial-card p-6 bg-white hover:border-[#F5A66B]/50 transition-all shadow-xs hover:shadow-sm"
+                className="p-5 rounded-2xl bg-white border border-[#F4E2D3] space-y-3 shadow-xs hover:border-[#FDBA74] transition-all"
               >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-[#F1E1D4]">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="px-2 py-0.5 rounded-md bg-[#FFF0E2] text-[#C87539] font-bold text-xs font-mono">
-                        {rule.rule_code}
-                      </span>
-                      <span className="text-[11px] font-semibold text-[#8A7567]">
-                        Category: {rule.category}
-                      </span>
-                    </div>
-                    <h2 className="text-base font-bold text-[#382A20]">{rule.title}</h2>
-                  </div>
-
-                  {/* Plain English Badges */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 ${
-                        isBlocking
-                          ? "bg-[#FEEBEA] text-[#B42318] border border-[#FECDCA]"
-                          : "bg-[#FFF0E2] text-[#C87539] border border-[#F5A66B]/30"
-                      }`}
-                      title={isBlocking ? "Stops publication until resolved" : "Helpful recommendation"}
-                    >
-                      {isBlocking ? "🚫 Blocking Flag" : "💡 Advisory Tip"}
-                    </span>
-
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]/50">
-                      ✓ Verbatim Citation
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74]">
+                    {rule.rule_code}
+                  </span>
+                  <span className="text-xs text-[#7C6A5E] font-semibold">{rule.category}</span>
                 </div>
 
-                {/* Directive in Clear English */}
-                <div className="mt-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#8A7567] mb-1">
-                    Guideline Directive
-                  </div>
-                  <p className="text-xs leading-relaxed text-[#382A20] font-medium">
-                    {rule.description}
-                  </p>
-                </div>
+                <h3 className="text-sm font-extrabold text-[#201815] leading-snug">
+                  {rule.title}
+                </h3>
+                <p className="text-xs text-[#7C6A5E] leading-relaxed">
+                  {rule.description}
+                </p>
 
-                {/* Cited Source Quote */}
-                <div className="mt-3 p-3.5 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4]">
-                  <div className="flex items-center justify-between text-[10px] font-bold text-[#8A7567] uppercase tracking-wider mb-1">
-                    <span>Official Brand Guideline Quote ({rule.source_section})</span>
-                    <span className="text-[#027A48] font-bold">Audited & Verified</span>
-                  </div>
-                  <p className="text-xs text-[#382A20] italic font-serif">
-                    "{rule.source_quote}"
-                  </p>
-                </div>
-
-                {/* Pass / Fail Unit Test Pairs */}
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-xl bg-[#EDFDF5] border border-[#A6F4C5]/60 text-xs">
-                    <div className="flex items-center gap-1.5 font-bold text-[#027A48] mb-1">
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Compliant (Pass) Example:</span>
-                    </div>
-                    <p className="text-[#027A48] leading-relaxed font-medium">
-                      "{rule.pass_example || "Compliant brand copy"}"
-                    </p>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[#FEEBEA] border border-[#FECDCA] text-xs">
-                    <div className="flex items-center gap-1.5 font-bold text-[#B42318] mb-1">
-                      <X className="w-3.5 h-3.5" />
-                      <span>Violating (Fail) Example:</span>
-                    </div>
-                    <p className="text-[#B42318] leading-relaxed font-medium">
-                      "{rule.fail_example || "Violation sample"}"
-                    </p>
-                  </div>
-                </div>
-
-                {/* Unit Test Execution Output */}
-                {testResult && (
-                  <div className="mt-3 p-3.5 rounded-xl bg-white border border-[#F1E1D4] text-xs">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span className="font-bold text-[#382A20]">
-                        Rule Unit Tests Verified (2/2 Passed)
-                      </span>
-                    </div>
-                    <div className="space-y-1.5 text-[11px] text-[#8A7567]">
-                      {testResult.results.map((r: any, i: number) => (
-                        <div key={i} className="flex items-center justify-between bg-[#FFF9F3] p-2 rounded-lg">
-                          <span className="truncate max-w-md">"{r.input_text}"</span>
-                          <span className="font-bold text-emerald-700 shrink-0">✓ PASSED</span>
-                        </div>
-                      ))}
-                    </div>
+                {rule.source_quote && (
+                  <div className="p-2.5 rounded-xl bg-[#FFFBF7] border border-[#F4E2D3] text-[11px] text-[#7C6A5E]">
+                    <strong className="text-[#201815]">Citation: </strong>
+                    &ldquo;{rule.source_quote}&rdquo;
                   </div>
                 )}
 
-                {/* Card Footer Actions */}
-                <div className="mt-4 pt-3 border-t border-[#F1E1D4] flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-[#8A7567]">
-                    Rule enforcement: <strong className="text-[#382A20]">{rule.enforcement_type}</strong>
+                <div className="pt-2 flex items-center justify-between border-t border-[#F4E2D3]">
+                  <span className="text-[11px] font-bold text-[#7C6A5E]">
+                    Severity: <strong className={rule.severity === "BLOCKING" ? "text-[#B42318]" : "text-[#D95D0D]"}>{rule.severity}</strong>
                   </span>
+
                   <button
-                    onClick={() => handleRunTests(rule.id)}
-                    disabled={testingRuleId === rule.id}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-[#FFF9F3] text-[#C87539] font-bold border border-[#F1E1D4] transition-colors shadow-2xs"
+                    onClick={() => handleRunRuleTest(rule.id)}
+                    disabled={isTesting}
+                    className="px-3 py-1 rounded-lg bg-white border border-[#F4E2D3] hover:border-[#FF8A3D] text-[#201815] text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer"
                   >
-                    <Play className="w-3 h-3 fill-[#C87539]" />
-                    <span>{testingRuleId === rule.id ? "Testing..." : "Test This Rule"}</span>
+                    <Play className={`w-3 h-3 text-[#FF8A3D] ${isTesting ? "animate-spin" : ""}`} />
+                    <span>{isTesting ? "Testing..." : res ? (res.all_passed ? "✓ Passed" : "❌ Failed") : "Test Rule"}</span>
                   </button>
                 </div>
               </div>
             );
-          })
+          })}
+          </div>
         )}
       </div>
     </div>
   );
 }
-

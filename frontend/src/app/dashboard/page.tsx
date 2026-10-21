@@ -6,9 +6,10 @@ import {
   FileCheck2, BookOpen, Database, ShieldCheck, CheckCircle2,
   ArrowRight, Cpu, Award, Shield, Zap, Fingerprint,
   Activity, Radio, ChevronRight, Lock, BarChart3,
-  TrendingUp, Globe, Terminal, AlertTriangle, Star
+  TrendingUp, Globe, Terminal, AlertTriangle, Star,
+  Upload, FileText, X, Sparkles
 } from "lucide-react";
-import { api, GovernanceInsights, Rulebook, Fact } from "@/lib/api";
+import { api, GovernanceInsights, Rulebook, Fact, ReviewResult } from "@/lib/api";
 import { SpotlightCard }        from "@/components/animations/SpotlightCard";
 import { BorderBeam }           from "@/components/animations/BorderBeam";
 import { MagnetButton }         from "@/components/animations/MagnetButton";
@@ -74,11 +75,11 @@ function StatCard({
 
 /* ─── fake recent activity ─── */
 const ACTIVITY = [
-  { type: "block",  label: "Deprecated name 'Apex Cloud' blocked", sub: "Spec-ApexCore-v2", time: "2m ago" },
-  { type: "fix",    label: "Surgical replacement to Apex Core™",    sub: "Spec-ApexCore-v2", time: "2m ago" },
-  { type: "seal",   label: "Packaging spec sealed",      sub: "SKU-Pulse-Edge-26", time: "18m ago" },
-  { type: "warn",   label: "Expired lab proof TTL",        sub: "Customer metric", time: "1h ago" },
-  { type: "seal",   label: "Brand identity receipt issued",      sub: "Brand-Kit-v2.0", time: "3h ago" },
+  { type: "block",  label: "Outdated product name blocked", sub: "Marketing Draft", time: "2m ago" },
+  { type: "fix",    label: "Automatic replacement to approved brand name", sub: "Marketing Draft", time: "2m ago" },
+  { type: "seal",   label: "Content approved & verified", sub: "Campaign Brief", time: "18m ago" },
+  { type: "warn",   label: "Unverified statistic detected", sub: "Press Release", time: "1h ago" },
+  { type: "seal",   label: "Brand compliance sign-off complete", sub: "Social Media Ad", time: "3h ago" },
 ];
 
 const ACTIVITY_COLORS: Record<string, { bg: string; text: string; border: string; icon: any }> = {
@@ -112,6 +113,30 @@ export default function DashboardPage() {
       setLoading(false);
     });
   }, []);
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [quickFile, setQuickFile] = useState<File | null>(null);
+  const [quickReviewing, setQuickReviewing] = useState(false);
+  const [quickResult, setQuickResult] = useState<ReviewResult | null>(null);
+  const [quickDragging, setQuickDragging] = useState(false);
+  const [quickAppliedFixes, setQuickAppliedFixes] = useState<Record<string, boolean>>({});
+
+  const handleQuickReview = async () => {
+    if (!quickFile) return;
+    setQuickReviewing(true);
+    const formData = new FormData();
+    formData.append("title", quickFile.name.replace(/\.[^/.]+$/, ""));
+    formData.append("file", quickFile);
+    try {
+      const res = await api.submitReview(formData);
+      setQuickResult(res);
+      setQuickAppliedFixes({});
+    } catch (err: any) {
+      alert(`Could not review PDF: ${err.message || err}`);
+    } finally {
+      setQuickReviewing(false);
+    }
+  };
 
   const ruleCount  = rulebook?.rules_count ?? 12;
   const factCount  = facts.length || 7;
@@ -155,7 +180,7 @@ export default function DashboardPage() {
               {/* Online badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur border border-[#FDBA74] shadow-xs">
                 <LiveDot color="#FF8A3D" />
-                <span className="text-xs font-extrabold text-[#D95D0D] tracking-wide">GOVERNANCE NODE ACTIVE</span>
+                <span className="text-xs font-extrabold text-[#D95D0D] tracking-wide">BRAND GUARD ONLINE</span>
               </div>
 
               <div>
@@ -169,10 +194,10 @@ export default function DashboardPage() {
                   <span className="mx-2 text-[#F4E2D3]">•</span>
                   <Typewriter
                     lines={[
-                      "Zero hallucinations on brand assets.",
-                      "Every flag cites an exact rule or spec.",
-                      "Surgical naming fixes preserve intent.",
-                      "SHA-256 seals every packaging spec.",
+                      "Check marketing copy against brand guidelines.",
+                      "Every flag points to an approved company rule.",
+                      "Quick fixes preserve your natural writing style.",
+                      "Verified approvals keep your team aligned.",
                     ]}
                     speed={42}
                     pause={1600}
@@ -189,7 +214,7 @@ export default function DashboardPage() {
                     style={{ background: "linear-gradient(135deg,#FF8A3D,#FF5F0F)" }}
                   >
                     <Zap className="w-4 h-4" />
-                    <span>Run Compliance Audit</span>
+                    <span>Check New Content</span>
                   </Link>
                 </MagnetButton>
                 <Link
@@ -197,7 +222,7 @@ export default function DashboardPage() {
                   className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/90 hover:bg-white text-[#201815] text-sm font-bold border border-[#F4E2D3] transition-all shadow-xs hover:-translate-y-0.5"
                 >
                   <BookOpen className="w-4 h-4 text-[#D95D0D]" />
-                  <span>Rulebook</span>
+                  <span>Brand Rules</span>
                 </Link>
                 <Link
                   href="/assets"
@@ -218,7 +243,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: "#2A1F1B" }}>
                   <div className="flex items-center gap-2 text-[#FF8A3D] font-sans font-bold text-xs">
                     <Terminal className="w-3.5 h-3.5" />
-                    <span>CANON Compiler</span>
+                    <span>Brand Guard Engine</span>
                   </div>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]">
                     ONLINE
@@ -265,9 +290,9 @@ export default function DashboardPage() {
       {/* ═══════════════════════ 2. KPI METRICS ═══════════════════════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Brand Rules Active"       value={ruleCount}    suffix=" rules"   icon={BookOpen}    trend="↑ All Cited"  color="#FF8A3D" delay={0}   />
-        <StatCard label="Verified Specs in Vault"  value={factCount}    suffix=" specs"   icon={Database}    trend="7 Fresh"      color="#D95D0D" delay={80}  />
+        <StatCard label="Approved Facts in Vault"  value={factCount}    suffix=" facts"   icon={Database}    trend="7 Fresh"      color="#D95D0D" delay={80}  />
         <StatCard label="Compliance Pass Rate"     value={passRate}     suffix="%"        icon={TrendingUp}  trend="↑ +2.3%"      color="#027A48" delay={160} />
-        <StatCard label="Local Inference Latency"  value={latencyMs}    suffix="ms"       icon={Cpu}                              color="#FFAE74" delay={240} />
+        <StatCard label="Average Review Speed"     value={latencyMs}    suffix="ms"       icon={Cpu}                              color="#FFAE74" delay={240} />
       </div>
 
       {/* ═══════════════════════ 3. MAIN GRID ═══════════════════════ */}
@@ -276,24 +301,183 @@ export default function DashboardPage() {
         {/* Left column: Quick Actions (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
 
+          {/* ── Quick PDF Review Dropzone ── */}
+          <ScrollReveal direction="up" delay={40}>
+            <div className="p-6 rounded-3xl bg-white border border-[#F1E1D4] shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#FF8A3D]" />
+                  <h2 className="text-sm font-black text-[#201815]">
+                    Quick Document Audit (PDF Upload)
+                  </h2>
+                </div>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74]">
+                  PDF-First
+                </span>
+              </div>
+              <p className="text-xs text-[#7C6A5E]">
+                Drop your marketing PDF or document here to check it instantly against your active brand guidelines.
+              </p>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.png,.jpg"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setQuickFile(e.target.files[0]);
+                    setQuickResult(null);
+                  }
+                }}
+                className="hidden"
+              />
+
+              {!quickFile ? (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setQuickDragging(true); }}
+                  onDragLeave={(e) => { e.preventDefault(); setQuickDragging(false); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setQuickDragging(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      setQuickFile(e.dataTransfer.files[0]);
+                      setQuickResult(null);
+                    }
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`p-6 rounded-2xl border-2 border-dashed transition-all cursor-pointer flex items-center justify-center gap-4 text-center ${
+                    quickDragging
+                      ? "border-[#FF8A3D] bg-[#FFF5EC]"
+                      : "border-[#F4E2D3] bg-[#FFFBF7] hover:border-[#FF8A3D] hover:bg-[#FFF9F3]"
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74] flex items-center justify-center shrink-0">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-extrabold text-[#201815]">
+                      Drop your marketing PDF here to review
+                    </div>
+                    <div className="text-[11px] text-[#7C6A5E]">
+                      Supports PDF (.pdf), Word (.docx), or Text (.txt)
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-[#EDFDF5] border border-[#A6F4C5] flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-white border border-[#A6F4C5] text-[#027A48] flex items-center justify-center shadow-xs shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-extrabold text-[#201815]">{quickFile.name}</div>
+                      <div className="text-[11px] text-[#7C6A5E]">
+                        {(quickFile.size / 1024).toFixed(1)} KB · Ready to check
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setQuickFile(null); setQuickResult(null); }}
+                      className="p-1.5 rounded-lg text-[#7C6A5E] hover:text-[#B42318] hover:bg-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleQuickReview}
+                      disabled={quickReviewing}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] text-white text-xs font-black shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{quickReviewing ? "Checking..." : "Review PDF Now"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Quick Results Displayed Down Below ── */}
+              {quickResult && (
+                <div className="pt-4 border-t border-[#F4E2D3] space-y-3 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {quickResult.blocking_findings_count > 0 ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-[#FFF0F0] text-[#B42318] border border-[#FECDCA] flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>{quickResult.blocking_findings_count} Issue(s) Found</span>
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5] flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>100% Brand Compliant!</span>
+                        </span>
+                      )}
+                      <span className="text-xs text-[#7C6A5E] font-medium">
+                        {quickResult.title}
+                      </span>
+                    </div>
+
+                    <Link
+                      href="/review"
+                      className="text-xs font-bold text-[#D95D0D] hover:underline flex items-center gap-1"
+                    >
+                      <span>Open Full Studio</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+
+                  {quickResult.findings && quickResult.findings.length > 0 && (
+                    <div className="space-y-2">
+                      {quickResult.findings.map((f, i) => (
+                        <div key={f.id || i} className="p-3 rounded-xl bg-[#FFF9F3] border border-[#FDBA74] text-xs flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-extrabold text-[#201815]">{f.category}: {f.description}</div>
+                            {f.suggested_replacement && (
+                              <div className="text-[11px] text-[#027A48] mt-0.5">
+                                Fix: <strong>{f.suggested_replacement}</strong>
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setQuickAppliedFixes((prev) => ({ ...prev, [f.id]: true }))}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-all ${
+                              quickAppliedFixes[f.id]
+                                ? "bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]"
+                                : "bg-[#FFF2E7] text-[#D95D0D] border border-[#FDBA74] hover:bg-[#FFEAD9]"
+                            }`}
+                          >
+                            {quickAppliedFixes[f.id] ? "✓ Applied" : "Apply Fix"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </ScrollReveal>
+
           {/* Quick Access Cards Row */}
           <ScrollReveal direction="up" delay={60}>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 {
-                  href: "/review", emoji: "⚡", title: "Brand Spec Review",
-                  desc: "Audit product naming, logo clearspace, trademarks, and benchmark specs with 1-click surgical fixes.",
+                  href: "/review", emoji: "⚡", title: "Review Content",
+                  desc: "Audit product naming, logo spacing, trademarks, and claims with 1-click automatic fixes.",
                   accent: "#FF8A3D", border: "#FDBA74", bg: "#FFF2E7", cta: "Open Studio",
                 },
                 {
-                  href: "/assets", emoji: "🎨", title: "Brand Assets & Logos",
-                  desc: "Access vector logos, clearspace isolation boundaries, and product naming taxonomy matrices.",
-                  accent: "#D95D0D", border: "#FDBA74", bg: "#FFF2E7", cta: "View Brand Kit",
+                  href: "/assets", emoji: "🎨", title: "Brand Assets",
+                  desc: "Access approved vector logos, spacing guidelines, and product naming standards.",
+                  accent: "#D95D0D", border: "#FDBA74", bg: "#FFF2E7", cta: "View Assets",
                 },
                 {
-                  href: "/approvals", emoji: "🔐", title: "Cryptographic Seals",
-                  desc: "Issue tamper-proof HMAC-SHA256 brand compliance certificates before retail or public distribution.",
-                  accent: "#027A48", border: "#A6F4C5", bg: "#EDFDF5", cta: "View Seals",
+                  href: "/approvals", emoji: "✅", title: "Approvals & History",
+                  desc: "Review compliant drafts and issue verified approvals before public publishing.",
+                  accent: "#027A48", border: "#A6F4C5", bg: "#EDFDF5", cta: "View Approvals",
                 },
               ].map((card, i) => (
                 <Link key={i} href={card.href} className="block group">
@@ -390,10 +574,10 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h2 className="text-sm font-extrabold text-[#201815]">
-                    Core Guarantee: No Citation → No Flag
+                    Core Guarantee: Every Flag Has a Clear Rule
                   </h2>
                   <p className="text-xs text-[#7C6A5E] mt-0.5 leading-relaxed">
-                    Every blocking violation maps to an exact policy clause. Zero AI hallucination, zero arbitrary censorship.
+                    Every issue links directly to an approved guideline or fact. Zero AI hallucinations, zero arbitrary censorship.
                   </p>
                 </div>
               </div>
@@ -401,7 +585,7 @@ export default function DashboardPage() {
                 href="/audit"
                 className="shrink-0 flex items-center gap-1.5 text-xs font-extrabold text-[#D95D0D] hover:text-[#FF8A3D] transition-colors"
               >
-                <span>Audit Chain</span>
+                <span>Audit History</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>

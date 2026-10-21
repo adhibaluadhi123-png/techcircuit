@@ -27,10 +27,6 @@ export default function AuditTrailPage() {
   const [verificationResult, setVerificationResult] = useState<AuditVerificationResult | null>(null);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadAuditEvents();
-  }, []);
-
   const loadAuditEvents = () => {
     setLoading(true);
     api.getAuditEvents()
@@ -43,6 +39,10 @@ export default function AuditTrailPage() {
         setLoading(false);
       });
   };
+
+  useEffect(() => {
+    loadAuditEvents();
+  }, []);
 
   const handleVerifyChain = async () => {
     setVerifying(true);
@@ -88,15 +88,15 @@ export default function AuditTrailPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5] uppercase tracking-wide">
-              Immutable Governance Log
+              Approved Audit Trail
             </span>
-            <span className="text-xs text-[#8A7567] font-medium">{events.length} Sealed Ledger Blocks</span>
+            <span className="text-xs text-[#8A7567] font-medium">{events.length} Sealed Audit Blocks</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#382A20]">
-            Tamper-Proof Audit Trail & Ledger
+            Audit History &amp; Verification
           </h1>
           <p className="text-sm text-[#8A7567] mt-1">
-            Every rule check, human sign-off, and override is cryptographically linked so nothing can be altered in secret.
+            Complete chronological record of all content reviews, manager sign-offs, and rule updates.
           </p>
         </div>
 
@@ -106,7 +106,7 @@ export default function AuditTrailPage() {
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-bold transition-all shadow-sm hover:shadow-md disabled:opacity-50"
         >
           <ShieldCheck className={`w-4 h-4 ${verifying ? "animate-spin" : ""}`} />
-          <span>{verifying ? "Checking Ledger Integrity..." : "⚡ Run Cryptographic Tamper-Check"}</span>
+          <span>{verifying ? "Checking Ledger Integrity..." : "⚡ Verify Audit Integrity"}</span>
         </button>
       </div>
 

@@ -70,38 +70,38 @@ DEMO_RULES = [
     },
     {
         "rule_code": "NAME-01",
-        "title": "Master Brand Orthography & CamelCase Capitalization",
+        "title": "Product Brand Orthography & Capitalization",
         "category": "Brand Naming",
-        "description": "The master brand name is strictly written as ApexDynamics with capital A and capital D, without internal spaces. Lowercase or spaced spellings are prohibited.",
-        "source_quote": "The master brand name is strictly written as ApexDynamics with capital A and capital D, without internal spaces.",
+        "description": "The product brand name is strictly written as CloudPlatform with capital C and P, without internal spaces. Lowercase or spaced spellings are prohibited.",
+        "source_quote": "The product brand name is strictly written as CloudPlatform with capital C and P, without internal spaces.",
         "source_section": "Section 2.2: Orthography and Capitalization (Page 6)",
         "severity": "BLOCKING",
         "enforcement_type": "DETERMINISTIC",
-        "pass_example": "ApexDynamics powers next-generation enterprise hardware and telemetry.",
-        "fail_example": "apexdynamics delivers real-time cluster telemetry.",
-        "pattern": r"\b(?:apexdynamics|Apex\s+dynamics|apex\s+dynamics)\b",
+        "pass_example": "CloudPlatform powers next-generation enterprise hardware and telemetry.",
+        "fail_example": "cloudplatform delivers real-time cluster telemetry.",
+        "pattern": r"\b(?:cloudplatform|Cloud\s+platform|cloud\s+platform)\b",
         "ambiguity_status": "CLEAR"
     },
     {
         "rule_code": "TM-01",
-        "title": "Mandatory Trademark Symbol on First Reference",
+        "title": "Mandatory Trademark Designation on First Reference",
         "category": "Brand Naming & Trademarks",
-        "description": "ApexDynamics® must display the registered trademark symbol upon its initial occurrence in all product collateral and packaging.",
-        "source_quote": "ApexDynamics® and Apex Core™ must display their respective trademark designations upon their initial occurrence in all customer-facing collateral.",
+        "description": "CloudPlatform™ must display the trademark symbol upon its initial occurrence in all customer-facing collateral.",
+        "source_quote": "CloudPlatform™ and MasterBrand® must display their respective trademark designations upon their initial occurrence in all customer-facing collateral.",
         "source_section": "Section 2.4: Trademark & Legal Nomenclature (Page 7)",
         "severity": "WARNING",
         "enforcement_type": "DETERMINISTIC",
-        "pass_example": "ApexDynamics® introduces next-generation computing architectures.",
-        "fail_example": "ApexDynamics without registered trademark symbol.",
-        "pattern": r"\bApexDynamics(?!\u00AE)\b",
+        "pass_example": "CloudPlatform™ introduces next-generation computing architectures.",
+        "fail_example": "CloudPlatform without trademark symbol.",
+        "pattern": r"\bCloudPlatform(?!\u2122)\b",
         "ambiguity_status": "CLEAR"
     },
     {
         "rule_code": "LOGO-01",
         "title": "Logo Clearspace & Isolation Perimeter",
         "category": "Logo & Visual Identity",
-        "description": "The primary ApexDynamics mark must always be surrounded by an isolation boundary equal to the height of the primary monogram 'A'. Never crowd or place elements within this zone.",
-        "source_quote": "The primary ApexDynamics mark must always be surrounded by an isolation boundary equal to the height of the primary monogram 'A'. Never crowd or touch the logo border.",
+        "description": "The primary brand mark must always be surrounded by an isolation boundary equal to the height of the primary mark. Never crowd or place elements within this zone.",
+        "source_quote": "The primary brand mark must always be surrounded by an isolation boundary equal to the height of the primary mark. Never crowd or touch the logo border.",
         "source_section": "Section 3.1: Logo Isolation & Clear Space Standards (Page 8)",
         "severity": "BLOCKING",
         "enforcement_type": "DETERMINISTIC",
@@ -114,7 +114,7 @@ DEMO_RULES = [
         "rule_code": "LOGO-02",
         "title": "Forbidden Logo Alterations & Distortions",
         "category": "Logo & Visual Identity",
-        "description": "Logomarks must only appear in approved single-tone White, Onyx Black, or Apex Ochre. Custom drop shadows, bevels, or unapproved gradients on the logo are strictly prohibited.",
+        "description": "Logomarks must only appear in approved single-tone White, Onyx Black, or Brand Terracotta. Custom drop shadows, bevels, or unapproved gradients on the logo are strictly prohibited.",
         "source_quote": "Never apply drop shadows, 3D extrusions, or unauthorized color fills to the official logomark.",
         "source_section": "Section 3.3: Forbidden Logo Alterations (Page 10)",
         "severity": "BLOCKING",
@@ -148,7 +148,7 @@ DEMO_RULES = [
         "severity": "BLOCKING",
         "enforcement_type": "DETERMINISTIC",
         "pass_example": "Rated top quartile in API throughput according to the 2026 Cloud Benchmark Report.",
-        "fail_example": "Apex Dynamics is the undisputed fastest platform in the world.",
+        "fail_example": "Our platform is the undisputed fastest platform in the world.",
         "pattern": r"\b(?:fastest\s+platform\s+in\s+the\s+world|undisputed\s+leader)\b",
         "ambiguity_status": "CLEAR"
     },
@@ -185,14 +185,14 @@ DEMO_RULES = [
 DEMO_FACTS = [
     {
         "fact_code": "FACT-TM-7492019",
-        "subject": "Registered Trademark USPTO Reg #7,492,019",
-        "approved_statement": "ApexDynamics® is a registered trademark of ApexDynamics Corporation under USPTO Registration No. 7,492,019 in Class 9 (hardware/telemetry) and Class 42 (software services).",
+        "subject": "Master Brand Trademark USPTO Reg #7,492,019",
+        "approved_statement": "CloudPlatform™ is a registered trademark under USPTO Registration No. 7,492,019 in Class 9 (hardware/telemetry) and Class 42 (software services).",
         "normalized_value": "7492019",
         "normalized_unit": "USPTO Reg",
         "source_document": "USPTO Certificate of Registration #7,492,019",
-        "source_quote": "Registration granted on the Principal Register for ApexDynamics® under Serial No. 97-482,109.",
+        "source_quote": "Registration granted on the Principal Register for CloudPlatform™ under Serial No. 97-482,109.",
         "owner_name": "Marcus Vance",
-        "owner_email": "admin@apexdynamics.example",
+        "owner_email": "admin@company.example",
         "valid_from": datetime(2024, 1, 1, tzinfo=timezone.utc),
         "valid_until": datetime(2034, 12, 31, tzinfo=timezone.utc),
         "status": "ACTIVE"
@@ -200,13 +200,13 @@ DEMO_FACTS = [
     {
         "fact_code": "FACT-LOGO-SPEC",
         "subject": "Official Vector Logo Specs & Clearspace",
-        "approved_statement": "The official horizontal logo lockup requires a 4:1 aspect ratio, minimum 24px digital display height, and minimum 12mm print packaging width with 1x 'A' monogram isolation boundary.",
+        "approved_statement": "The official horizontal logo lockup requires a 4:1 aspect ratio, minimum 24px digital display height, and minimum 12mm print packaging width with 1x mark height isolation boundary.",
         "normalized_value": "4:1",
         "normalized_unit": "ratio",
-        "source_document": "ApexDynamics Master Brand & Identity Guidelines v2.0",
-        "source_quote": "The primary mark requires 4:1 width-to-height ratio with isolation boundary equal to monogram height on all four sides.",
+        "source_document": "Master Brand & Identity Guidelines v2.0",
+        "source_quote": "The primary mark requires 4:1 width-to-height ratio with isolation boundary equal to mark height on all four sides.",
         "owner_name": "Elena Rostova",
-        "owner_email": "manager@apexdynamics.example",
+        "owner_email": "manager@company.example",
         "valid_from": datetime(2026, 1, 1, tzinfo=timezone.utc),
         "valid_until": datetime(2028, 12, 31, tzinfo=timezone.utc),
         "status": "ACTIVE"
@@ -214,13 +214,13 @@ DEMO_FACTS = [
     {
         "fact_code": "FACT-COLOR-CORE",
         "subject": "Certified Brand Palette Hex Codes",
-        "approved_statement": "The certified master brand palette comprises Apex Ochre (#C87539), Warm Canvas (#FFF9F3), Midnight Brown (#382A20), and Apricot Glow (#F5A66B).",
+        "approved_statement": "The certified master brand palette comprises Brand Terracotta (#C87539), Warm Canvas (#FFF9F3), Deep Charcoal (#201815), and Apricot Glow (#FF8A3D).",
         "normalized_value": "#C87539",
         "normalized_unit": "hex",
-        "source_document": "ApexDynamics Master Brand & Identity Guidelines v2.0",
-        "source_quote": "Apex Ochre #C87539 and Midnight Brown #382A20 constitute our primary brand signatures.",
+        "source_document": "Master Brand & Identity Guidelines v2.0",
+        "source_quote": "Brand Terracotta #C87539 and Deep Charcoal #201815 constitute our primary brand signatures.",
         "owner_name": "Elena Rostova",
-        "owner_email": "manager@apexdynamics.example",
+        "owner_email": "manager@company.example",
         "valid_from": datetime(2026, 1, 1, tzinfo=timezone.utc),
         "valid_until": datetime(2028, 12, 31, tzinfo=timezone.utc),
         "status": "ACTIVE"
@@ -228,13 +228,13 @@ DEMO_FACTS = [
     {
         "fact_code": "FACT-SLA-2026",
         "subject": "System Availability SLA",
-        "approved_statement": "ApexDynamics guarantees an infrastructure uptime SLA of 99.98% across all multi-region clusters.",
+        "approved_statement": "We guarantee an infrastructure uptime SLA of 99.98% across all multi-region clusters.",
         "normalized_value": "99.98",
         "normalized_unit": "%",
         "source_document": "2026 Service Level Agreement v4.2",
         "source_quote": "Multi-region cluster availability is certified at 99.98% monthly uptime.",
         "owner_name": "Sarah Chen",
-        "owner_email": "sarah.chen@apexdynamics.example",
+        "owner_email": "ops@company.example",
         "valid_from": datetime(2026, 1, 1, tzinfo=timezone.utc),
         "valid_until": datetime(2027, 12, 31, tzinfo=timezone.utc),
         "status": "ACTIVE"
@@ -242,13 +242,13 @@ DEMO_FACTS = [
     {
         "fact_code": "FACT-CUST-2025",
         "subject": "Enterprise Customer Count",
-        "approved_statement": "Over 1,450 verified enterprise organizations run their core telemetry on ApexDynamics.",
+        "approved_statement": "Over 1,450 verified enterprise organizations run their core production systems on our platform.",
         "normalized_value": "1450",
         "normalized_unit": "customers",
         "source_document": "Q3 2025 Audited Growth Metrics",
         "source_quote": "Active enterprise customer count stands at 1,450 verified organizations.",
         "owner_name": "David Miller",
-        "owner_email": "david.miller@apexdynamics.example",
+        "owner_email": "david.miller@company.example",
         "valid_from": datetime(2025, 7, 1, tzinfo=timezone.utc),
         "valid_until": datetime(2025, 12, 31, tzinfo=timezone.utc),  # STALE / EXPIRED
         "status": "STALE"
@@ -262,7 +262,7 @@ DEMO_FACTS = [
         "source_document": "2026 Network Benchmark Report",
         "source_quote": "Global P95 roundtrip latency clocked at 42 milliseconds across 180 edge nodes.",
         "owner_name": "Alex Rivera",
-        "owner_email": "alex.rivera@apexdynamics.example",
+        "owner_email": "network@company.example",
         "valid_from": datetime(2026, 1, 15, tzinfo=timezone.utc),
         "valid_until": datetime(2027, 1, 15, tzinfo=timezone.utc),
         "status": "ACTIVE"
@@ -270,13 +270,13 @@ DEMO_FACTS = [
     {
         "fact_code": "FACT-COMP-2026",
         "subject": "Security Compliance",
-        "approved_statement": "ApexDynamics is officially certified under SOC 2 Type II and ISO 27001 standards.",
+        "approved_statement": "Our platform is officially certified under SOC 2 Type II and ISO 27001 standards.",
         "normalized_value": "SOC 2 Type II",
         "normalized_unit": None,
         "source_document": "Annual Security Audit Attestation 2026",
         "source_quote": "Independent auditor issued clean SOC 2 Type II certification valid through Q2 2027.",
         "owner_name": "Elena Rostova",
-        "owner_email": "elena.rostova@apexdynamics.example",
+        "owner_email": "security@company.example",
         "valid_from": datetime(2026, 2, 1, tzinfo=timezone.utc),
         "valid_until": datetime(2027, 5, 15, tzinfo=timezone.utc),
         "status": "ACTIVE"
@@ -292,15 +292,19 @@ def seed_database(db: Session = None):
         close_db = True
 
     try:
-        # 1. Create Workspace
+        # 1. Create or Update Workspace
         ws = db.query(Workspace).filter(Workspace.id == WORKSPACE_ID).first()
         if not ws:
             ws = Workspace(
                 id=WORKSPACE_ID,
-                name="ApexDynamics (Synthetic Demo)",
-                slug="apexdynamics"
+                name="Brand Governance Workspace",
+                slug="brand-workspace"
             )
             db.add(ws)
+            db.flush()
+        else:
+            ws.name = "Brand Governance Workspace"
+            ws.slug = "brand-workspace"
             db.flush()
 
         # 2. Seed Users
@@ -324,15 +328,14 @@ def seed_database(db: Session = None):
             rulebook = Rulebook(
                 workspace_id=WORKSPACE_ID,
                 version="1.0.0",
-                title="ApexDynamics Master Brand & Identity Guidelines v1.0",
+                title="Master Brand & Identity Guidelines v1.0",
                 description="Official compiled brand governance rulebook covering product naming architecture, trademarks, logo clearspace, color palettes, and certified product specifications.",
                 status="ACTIVE"
             )
             db.add(rulebook)
             db.flush()
         else:
-            rulebook.version = "1.0.0"
-            rulebook.title = "ApexDynamics Master Brand & Identity Guidelines v1.0"
+            rulebook.title = "Master Brand & Identity Guidelines v1.0"
             rulebook.description = "Official compiled brand governance rulebook covering product naming architecture, trademarks, logo clearspace, color palettes, and certified product specifications."
             db.flush()
 
@@ -386,7 +389,7 @@ def seed_database(db: Session = None):
                 existing_rule.ambiguity_status = r_data["ambiguity_status"]
         db.flush()
 
-        # 4. Seed Facts
+        # 4. Seed or Update Facts
         for f_data in DEMO_FACTS:
             existing_fact = db.query(Fact).filter(
                 Fact.workspace_id == WORKSPACE_ID,
@@ -409,6 +412,19 @@ def seed_database(db: Session = None):
                     status=f_data["status"]
                 )
                 db.add(fact)
+            else:
+                existing_fact.subject = f_data["subject"]
+                existing_fact.approved_statement = f_data["approved_statement"]
+                existing_fact.normalized_value = f_data["normalized_value"]
+                existing_fact.normalized_unit = f_data["normalized_unit"]
+                existing_fact.source_document = f_data["source_document"]
+                existing_fact.source_quote = f_data["source_quote"]
+                existing_fact.owner_name = f_data["owner_name"]
+                existing_fact.owner_email = f_data["owner_email"]
+                existing_fact.valid_from = f_data["valid_from"]
+                existing_fact.valid_until = f_data["valid_until"]
+                existing_fact.status = f_data["status"]
+        db.flush()
 
         # 5. Seed Genesis Audit Event
         existing_event = db.query(AuditEvent).filter(AuditEvent.workspace_id == WORKSPACE_ID).first()

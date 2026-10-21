@@ -1,40 +1,57 @@
 @import "tailwindcss";
 
 :root {
-  /* Pale Orange & White Theme Palette */
-  --bg-main: #FFFBF7;
-  --bg-subtle: #FFF5EC;
+  /* Warm High-Contrast Orange Design Tokens (CANON Design System) */
+  --bg-main: #FFFAF5;
+  --bg-subtle: #FFF1E6;
   --bg-surface: #FFFFFF;
   --bg-surface-elevated: #FFFFFF;
   
-  --accent-orange-pale: #FFE4D1;
-  --accent-orange-light: #FFAE74;
-  --accent-orange: #FF8A3D;
+  --primary-orange: #F97316;
+  --deep-orange: #C2410C;
+  --bright-accent: #FB923C;
+  --soft-peach: #FFF1E6;
+  --warm-bg: #FFFAF5;
+  --dark-ink: #21160F;
+  --muted-text: #75665D;
+
+  --accent-orange-pale: #FFF1E6;
+  --accent-orange-light: #FB923C;
+  --accent-orange: #F97316;
   --accent-orange-vibrant: #F97316;
-  --accent-orange-deep: #D95D0D;
+  --accent-orange-deep: #C2410C;
   
-  --orange-glow: rgba(255, 138, 61, 0.16);
-  --orange-glow-subtle: rgba(255, 174, 116, 0.12);
+  --orange-glow: rgba(249, 115, 22, 0.18);
+  --orange-glow-subtle: rgba(251, 146, 60, 0.14);
   
-  --text-main: #201815;
-  --text-muted: #7C6A5E;
-  --text-light: #A49184;
+  --text-main: #21160F;
+  --text-muted: #75665D;
+  --text-light: #9C8C83;
   
   --border-warm: #F4E2D3;
   --border-subtle: #FDF0E5;
-  --border-accent: #FDBA74;
+  --border-accent: #FB923C;
   
   --status-blocking-bg: #FFF0F0;
   --status-blocking-text: #B42318;
   --status-blocking-border: #FECDCA;
   
   --status-warning-bg: #FFF5EC;
-  --status-warning-text: #D95D0D;
-  --status-warning-border: #FDBA74;
+  --status-warning-text: #C2410C;
+  --status-warning-border: #FB923C;
   
   --status-verified-bg: #EDFDF5;
   --status-verified-text: #027A48;
   --status-verified-border: #A6F4C5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 body {

@@ -146,7 +146,6 @@ export default function LoginPage() {
         email: cleanEmail,
         full_name: cleanName,
         password: cleanPassword,
-        role: regRole,
       });
 
       // Save user session
@@ -193,7 +192,7 @@ export default function LoginPage() {
   const handleQuickFillRegister = () => {
     const randomNum = Math.floor(Math.random() * 900) + 100;
     setRegFullName("Creative Lead " + randomNum);
-    setRegEmail(`lead${randomNum}@apexdynamics.example`);
+    setRegEmail(`lead${randomNum}@company.example`);
     setRegPassword("Password123!");
     setRegRole("CREATOR");
     setError(null);
@@ -464,27 +463,17 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Role Selection */}
-              <div>
-                <label
-                  htmlFor="reg-role"
-                  className="text-xs font-bold text-[#201815] block mb-1.5 cursor-pointer"
-                >
-                  3. Workspace Role
-                </label>
-                <select
-                  id="reg-role"
-                  name="role"
-                  value={regRole}
-                  onChange={(e: any) => setRegRole(e.target.value)}
-                  className="editorial-input w-full p-2.5 text-xs font-semibold cursor-pointer"
-                >
-                  <option value="CREATOR">✍️ Content Writer / Storyteller (Writes & fixes copy)</option>
-                  <option value="BRAND_MANAGER">🛡️ Brand Guardian (Creates rules & facts)</option>
-                  <option value="APPROVER">👔 Approver (Issues official cryptographic seals)</option>
-                  <option value="AUTHORISED_REVIEWER">🔍 Reviewer (Audits compliance)</option>
-                  <option value="ADMIN">⚙️ Administrator (Full system access)</option>
-                </select>
+              {/* Assigned Role */}
+              <div className="p-3.5 rounded-xl bg-[#FFF5EC] border border-[#FB923C]/40 flex items-start gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-[#F97316] shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-xs font-bold text-[#21160F]">
+                    Default Tier: Content Creator
+                  </div>
+                  <p className="text-[11px] text-[#75665D] mt-0.5 leading-relaxed">
+                    Public registrations are assigned Creator permissions on the server. Privileged roles (Brand Guardian, Approver, Admin) are granted by Workspace Administrators.
+                  </p>
+                </div>
               </div>
 
               {/* Password */}
@@ -549,6 +538,34 @@ export default function LoginPage() {
                 </p>
               </div>
 
+              {/* Quick Persona Fill */}
+              <div className="p-3 rounded-2xl bg-[#FFF5EC] border border-[#FB923C]/30 space-y-2">
+                <div className="text-[11px] font-extrabold uppercase tracking-wider text-[#C2410C]">
+                  ⚡ 1-Click Demo Accounts (Select Role)
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
+                  {[
+                    { label: "Content Creator", email: "creator@canon.example" },
+                    { label: "Brand Manager", email: "manager@canon.example" },
+                    { label: "Executive Approver", email: "approver@canon.example" },
+                    { label: "Compliance Reviewer", email: "reviewer@canon.example" },
+                    { label: "System Admin", email: "admin@canon.example" },
+                  ].map((p) => (
+                    <button
+                      key={p.email}
+                      type="button"
+                      onClick={() => {
+                        setLoginEmail(p.email);
+                        setLoginPassword("Password123!");
+                      }}
+                      className="px-2 py-1.5 rounded-lg bg-white border border-[#F4E2D3] hover:border-[#F97316] hover:bg-[#FFF1E6] text-left transition-colors font-medium text-[#21160F] shadow-xs cursor-pointer truncate"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label
                   htmlFor="login-email"
@@ -566,7 +583,7 @@ export default function LoginPage() {
                     autoComplete="email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    placeholder="e.g. creator@apexdynamics.example"
+                    placeholder="e.g. creator@company.example"
                     className="editorial-input w-full pl-10 pr-3 py-2.5 text-xs font-medium"
                   />
                 </div>

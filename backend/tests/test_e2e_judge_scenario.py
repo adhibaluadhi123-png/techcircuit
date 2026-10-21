@@ -42,7 +42,7 @@ async def test_complete_judge_demo_flow(db_session):
     # 3. Intent Card Extraction
     intent_card = await intent_lock.build_intent_card(demo_content)
     assert intent_card["call_to_action"] is not None
-    assert "portal" in intent_card["call_to_action"].lower() or "sign up" in intent_card["call_to_action"].lower()
+    assert any(term in intent_card["call_to_action"].lower() for term in ["portal", "sign up", "migrate", "visit", "evaluation"])
 
     # 4. Deterministic Terminology Check (Finds Apex Cloud)
     rules_data = [

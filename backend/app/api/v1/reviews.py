@@ -7,19 +7,20 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.db.models import (
     ContentSubmission, ContentVersion, IntentCard, ExtractedClaim,
-    Finding, Rulebook, Rule, Fact, AuditEvent
+    Finding, Rulebook, Rule, Fact, AuditEvent, User
 )
 from app.schemas.domain import (
     ReviewResultResponse, ContentSubmissionResponse, FindingResponse,
     ExtractedClaimResponse, IntentCardResponse, FindingDecisionUpdate
 )
-from app.core.security import sanitize_and_redact_content
+from app.core.security import sanitize_and_redact_content, get_current_user
 from app.core.audit_chain import calculate_sha256, record_audit_event
 from app.core.intent_lock import intent_lock
 from app.core.claim_ledger import claim_ledger
 from app.core.deterministic import check_terminology_rules
 from app.core.citation import CitationVerifier
-from app.core.parser import parse_uploaded_file
+from app.core.parser import parse_uploaded_file, read_uploaded_file_safely
+from app.core.visual_audit import analyze_image_asset, audit_text_accessibility
 from app.core.llm_provider import llm_client
 from app.config import settings
 
@@ -30,8 +31,7 @@ async def submit_and_review_content(
     title: str = Form(...),
     content_text: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
-    creator_id: str = Form("usr-creator-01"),
-    workspace_id: str = Form(settings.DEFAULT_WORKSPACE_ID),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -39,15 +39,26 @@ async def submit_and_review_content(
     Ingest -> Redact -> Intent Card -> Claim Ledger -> Deterministic Checks ->
     Constrained AI -> Citation Verifier -> Intent Lock Diff -> Audit Hash Chain.
     """
+    creator_id = current_user.id
+    workspace_id = current_user.workspace_id
     raw_content = ""
     content_type = "TEXT"
     filename = None
+    image_findings = []
     
     if file:
-        filename = file.filename
+        filename = file.filename or "uploaded_file"
         content_type = filename.split(".")[-1].upper() if "." in filename else "FILE"
-        content_bytes = await file.read()
-        raw_content = parse_uploaded_file(filename, content_bytes)
+        try:
+            content_bytes = await read_uploaded_file_safely(file, settings.MAX_UPLOAD_SIZE_MB)
+            raw_content = parse_uploaded_file(filename, content_bytes)
+            if content_type in ["PNG", "JPG", "JPEG"]:
+                img_analysis = analyze_image_asset(content_bytes, filename)
+                image_findings = img_analysis.get("visual_findings", [])
+        except ValueError as ve:
+            if "exceeds maximum permitted size" in str(ve):
+                raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(ve))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     elif content_text:
         raw_content = content_text
     else:
@@ -121,7 +132,46 @@ async def submit_and_review_content(
                 "suggested_correction": None,
                 "verification_status": "VERIFIED"
             })
-            
+
+    # 6b. Visual Brand Asset Checks (image dimensions, aspect ratio, color palette distance)
+    for vf in image_findings:
+        candidate_findings.append({
+            "rule_id": None,
+            "rule_code": vf["rule_code"],
+            "category": vf.get("category", "Visual"),
+            "severity": vf.get("severity", "WARNING"),
+            "span_start": 0,
+            "span_end": len(filename or "image"),
+            "matched_text": filename or "image asset",
+            "source_quote": "Approved Visual Brand Identity Standards",
+            "source_section": "Brand Guidelines",
+            "explanation": vf["explanation"],
+            "evidence_status": "VERIFIED",
+            "confidence_tier": "DETERMINISTIC",
+            "suggested_correction": None,
+            "verification_status": "VERIFIED"
+        })
+
+    # 6c. Copy Accessibility Standards (WCAG 2.2 descriptive links, screen-reader text formatting)
+    a11y_findings = audit_text_accessibility(raw_content)
+    for af in a11y_findings:
+        candidate_findings.append({
+            "rule_id": None,
+            "rule_code": af["rule_code"],
+            "category": af.get("category", "Accessibility"),
+            "severity": af.get("severity", "ADVISORY"),
+            "span_start": af.get("span_start", 0),
+            "span_end": af.get("span_end", len(af.get("matched_text", ""))),
+            "matched_text": af.get("matched_text", ""),
+            "source_quote": "WCAG 2.2 Editorial Accessibility Standard",
+            "source_section": "Accessibility Guidelines",
+            "explanation": af["explanation"],
+            "evidence_status": "VERIFIED",
+            "confidence_tier": "DETERMINISTIC",
+            "suggested_correction": None,
+            "verification_status": "VERIFIED"
+        })
+
     # 7. Constrained Semantic AI Checks (Tone and Brand Voice)
     # Check if tone rule exists and needs semantic check
     tone_rules = [r for r in active_rules if r.category == "Tone"]
@@ -353,13 +403,13 @@ async def submit_and_review_content(
 
 @router.get("/submissions", response_model=List[ContentSubmissionResponse])
 def list_submissions(
-    workspace_id: str = settings.DEFAULT_WORKSPACE_ID,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """List all content submissions with creator metadata and status."""
+    """List all content submissions belonging strictly to the authenticated user's workspace."""
     submissions = (
         db.query(ContentSubmission)
-        .filter(ContentSubmission.workspace_id == workspace_id)
+        .filter(ContentSubmission.workspace_id == current_user.workspace_id)
         .order_by(ContentSubmission.created_at.desc())
         .all()
     )
@@ -371,11 +421,18 @@ def list_submissions(
     return results
 
 @router.get("/submissions/{submission_id}", response_model=Dict[str, Any])
-def get_submission_details(submission_id: str, db: Session = Depends(get_db)):
-    """Retrieve complete findings, versions, diff, and receipt for a submission."""
-    sub = db.query(ContentSubmission).filter(ContentSubmission.id == submission_id).first()
+def get_submission_details(
+    submission_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieve complete findings, versions, diff, and receipt for a submission in caller's workspace."""
+    sub = db.query(ContentSubmission).filter(
+        ContentSubmission.id == submission_id,
+        ContentSubmission.workspace_id == current_user.workspace_id
+    ).first()
     if not sub:
-        raise HTTPException(status_code=404, detail="Submission not found")
+        raise HTTPException(status_code=404, detail="Submission not found.")
         
     latest_version = (
         db.query(ContentVersion)
@@ -406,16 +463,26 @@ def get_submission_details(submission_id: str, db: Session = Depends(get_db)):
 def update_finding_decision(
     finding_id: str,
     payload: FindingDecisionUpdate,
-    actor_id: str = "usr-creator-01",
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Creator / Reviewer records a decision on a finding (ACCEPTED, DISPUTED, OVERRIDDEN).
+    Strictly verifies finding belongs to caller's workspace.
     Feeds directly into the Governance Loop.
     """
-    finding = db.query(Finding).filter(Finding.id == finding_id).first()
+    finding = (
+        db.query(Finding)
+        .join(ContentVersion, Finding.content_version_id == ContentVersion.id)
+        .join(ContentSubmission, ContentVersion.submission_id == ContentSubmission.id)
+        .filter(
+            Finding.id == finding_id,
+            ContentSubmission.workspace_id == current_user.workspace_id
+        )
+        .first()
+    )
     if not finding:
-        raise HTTPException(status_code=404, detail="Finding not found")
+        raise HTTPException(status_code=404, detail="Finding not found.")
         
     finding.user_decision = payload.user_decision
     db.commit()
@@ -424,10 +491,10 @@ def update_finding_decision(
     if payload.user_decision == "OVERRIDDEN":
         record_audit_event(
             db=db,
-            workspace_id=settings.DEFAULT_WORKSPACE_ID,
+            workspace_id=current_user.workspace_id,
             event_type="OVERRIDE_LOGGED",
-            actor_id=actor_id,
-            actor_role="CREATOR",
+            actor_id=current_user.id,
+            actor_role=current_user.role,
             details={
                 "finding_id": finding.id,
                 "rule_id": finding.rule_id,

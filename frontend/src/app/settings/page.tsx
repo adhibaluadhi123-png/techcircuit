@@ -17,7 +17,7 @@ import {
 
 export default function SettingsPage() {
   const [testRedactText, setTestRedactText] = useState(
-    "Confidential launch draft: Project ApexPro begins next quarter at $499 per mo. Use internal auth token sk-99887766554433221100aabb for early beta testing."
+    "Confidential launch draft: Project Nova begins next quarter at $499 per mo. Use internal auth token sk-99887766554433221100aabb for early beta testing."
   );
 
   // Live client-side regex simulation matching backend RedactionGateway

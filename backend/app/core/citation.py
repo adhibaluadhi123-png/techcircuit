@@ -56,13 +56,32 @@ class CitationVerifier:
         span_end = result.get("span_end", 0)
         matched_text = result.get("matched_text", "")
         
-        # Rule Invariant A: Deterministic findings are already verified programmatically
-        if result.get("confidence_tier") == "DETERMINISTIC":
+        # Special categories with dedicated deterministic validation
+        category = result.get("category")
+        if category == "Claims":
+            if matched_text and matched_text not in content_text:
+                result["confidence_tier"] = "ADVISORY"
+                result["severity"] = "ADVISORY"
+                result["verification_status"] = "REJECTED"
+                result["evidence_status"] = "UNVERIFIED"
+                result["rejection_reason"] = "Rejected: Claim text does not appear in submitted content."
+                return result
+            result["confidence_tier"] = "DETERMINISTIC"
             result["verification_status"] = "VERIFIED"
             result["evidence_status"] = "VERIFIED"
             return result
 
-        # Invariant B: Must provide a Rule ID or Rule Code
+        if category in ["Visual", "Accessibility"]:
+            if matched_text and matched_text in content_text:
+                idx = content_text.find(matched_text)
+                result["span_start"] = idx
+                result["span_end"] = idx + len(matched_text)
+            result["confidence_tier"] = "DETERMINISTIC"
+            result["verification_status"] = "VERIFIED"
+            result["evidence_status"] = "VERIFIED"
+            return result
+
+        # Invariant A: Must provide a valid Rule ID or Rule Code in active rulebook
         rule = None
         if rule_id:
             rule = self.db.query(Rule).filter(
@@ -89,30 +108,7 @@ class CitationVerifier:
             )
             return result
 
-        # Invariant C: Confirm exact source quote matches stored rule source text
-        normalized_cited_quote = normalize_source_text(source_quote or "")
-        normalized_stored_quote = normalize_source_text(rule.source_quote)
-        
-        # Check if the cited quote is present in the stored quote, or vice-versa
-        quote_matched = False
-        if normalized_cited_quote and (
-            normalized_cited_quote in normalized_stored_quote or
-            normalized_stored_quote in normalized_cited_quote
-        ):
-            quote_matched = True
-
-        if not quote_matched:
-            # Fabricated or inaccurate quote citation detected!
-            result["confidence_tier"] = "ADVISORY"
-            result["severity"] = "ADVISORY"
-            result["verification_status"] = "DEMOTED"
-            result["evidence_status"] = "UNVERIFIED"
-            result["rejection_reason"] = (
-                f"Demoted to Advisory: Cited source quote could not be verified in stored guideline text for {rule.rule_code}."
-            )
-            return result
-
-        # Invariant D: Content Span Alignment Check
+        # Invariant B: Content Span Alignment & Existence Check
         # Verify that the matched text exists at or near the specified span in the content
         if matched_text:
             text_at_span = content_text[span_start:span_end]
@@ -131,12 +127,38 @@ class CitationVerifier:
                     result["rejection_reason"] = "Rejected: Flagged content span does not exist in submitted text."
                     return result
 
+        is_deterministic = result.get("confidence_tier") == "DETERMINISTIC"
+
+        # Invariant C: Confirm exact source quote for non-deterministic findings
+        if not is_deterministic:
+            normalized_cited_quote = normalize_source_text(source_quote or "")
+            normalized_stored_quote = normalize_source_text(rule.source_quote)
+            
+            # Check if the cited quote is present in the stored quote, or vice-versa
+            quote_matched = False
+            if normalized_cited_quote and (
+                normalized_cited_quote in normalized_stored_quote or
+                normalized_stored_quote in normalized_cited_quote
+            ):
+                quote_matched = True
+
+            if not quote_matched:
+                # Fabricated or inaccurate quote citation detected!
+                result["confidence_tier"] = "ADVISORY"
+                result["severity"] = "ADVISORY"
+                result["verification_status"] = "DEMOTED"
+                result["evidence_status"] = "UNVERIFIED"
+                result["rejection_reason"] = (
+                    f"Demoted to Advisory: Cited source quote could not be verified in stored guideline text for {rule.rule_code}."
+                )
+                return result
+
         # All invariants verified!
         result["rule_id"] = rule.id
         result["rule_code"] = rule.rule_code
         result["source_quote"] = rule.source_quote
         result["source_section"] = rule.source_section
-        result["confidence_tier"] = "EVIDENCE_BACKED_AI"
+        result["confidence_tier"] = "DETERMINISTIC" if is_deterministic else "EVIDENCE_BACKED_AI"
         result["verification_status"] = "VERIFIED"
         result["evidence_status"] = "VERIFIED"
         result["rejection_reason"] = None

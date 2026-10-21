@@ -8,6 +8,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - ENVIRONMENT=development
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_MODEL=qwen2.5:1.5b
       - DATABASE_URL=sqlite:///./canon.db
@@ -15,6 +16,11 @@ services:
       - ./backend/canon.db:/app/canon.db
     depends_on:
       - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   frontend:
     build:
@@ -30,7 +36,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - ollama_data:/root/.ollama
 

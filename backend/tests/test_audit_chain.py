@@ -60,3 +60,75 @@ def test_tampered_payload_detected(db_session):
     assert result["is_valid"] is False
     assert result["broken_event_id"] == ev.id
     assert "Tampered payload detected" in result["message"]
+
+
+def test_concurrent_audit_writes(db_session):
+    """
+    CRITICAL CONCURRENCY TEST:
+    Simultaneously append multiple events across concurrent threads.
+    Verifies that the mutex and sequencing guarantee an intact, unbroken chain.
+    """
+    import concurrent.futures
+
+    def append_event(idx: int):
+        record_audit_event(
+            db=db_session,
+            workspace_id=WORKSPACE_ID,
+            event_type="CONCURRENT_ACTION",
+            actor_id=f"usr-worker-{idx}",
+            actor_role="CREATOR",
+            details={"task_index": idx, "action": f"Concurrent task {idx}"}
+        )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(append_event, i) for i in range(10)]
+        for f in concurrent.futures.as_completed(futures):
+            f.result()
+
+    result = verify_audit_chain(db_session, WORKSPACE_ID)
+    assert result["is_valid"] is True
+    assert result["broken_event_id"] is None
+
+
+def test_signed_checkpoint_creation_and_tamper_detection(db_session):
+    """
+    CRITICAL INTEGRITY TEST:
+    Verifies signed checkpoint creation and ensures that deleting historical
+    blocks (table truncation) is caught by the signed checkpoint verification.
+    """
+    from app.core.audit_chain import create_audit_checkpoint
+
+    # Record some events
+    for i in range(3):
+        record_audit_event(
+            db=db_session,
+            workspace_id=WORKSPACE_ID,
+            event_type="MILESTONE_ACTION",
+            actor_id="usr-approver-01",
+            actor_role="APPROVER",
+            details={"step": i}
+        )
+
+    # Create signed checkpoint certifying ledger head
+    ckpt = create_audit_checkpoint(db_session, WORKSPACE_ID)
+    assert ckpt.block_count >= 3
+    assert ckpt.checkpoint_signature is not None
+
+    # Normal verification passes
+    initial_check = verify_audit_chain(db_session, WORKSPACE_ID)
+    assert initial_check["is_valid"] is True
+
+    # Simulate malicious attacker deleting the last event
+    last_event = (
+        db_session.query(AuditEvent)
+        .filter(AuditEvent.workspace_id == WORKSPACE_ID)
+        .order_by(AuditEvent.sequence_number.desc())
+        .first()
+    )
+    db_session.delete(last_event)
+    db_session.commit()
+
+    # Verification must catch ledger truncation against the signed checkpoint
+    truncated_check = verify_audit_chain(db_session, WORKSPACE_ID)
+    assert truncated_check["is_valid"] is False
+    assert "Ledger truncation detected" in truncated_check["message"]

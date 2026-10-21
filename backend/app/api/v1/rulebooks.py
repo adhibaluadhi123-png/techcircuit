@@ -3,27 +3,31 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.db.models import Rulebook, Rule, RuleTestCase
+from app.db.models import Rulebook, Rule, RuleTestCase, User
 from app.schemas.domain import (
     RulebookResponse, RuleResponse, RuleCreate, RuleUpdate, RuleTestCaseResponse
 )
+from app.core.security import get_current_user, require_roles
 from app.core.compiler import compiler
-from app.core.parser import parse_uploaded_file
+from app.core.parser import parse_uploaded_file, read_uploaded_file_safely
 from app.core.audit_chain import record_audit_event
 from app.config import settings
 
 router = APIRouter(prefix="/rulebooks", tags=["Brand Rulebook & Compiler"])
 
 @router.get("", response_model=RulebookResponse)
-def get_active_rulebook(workspace_id: str = settings.DEFAULT_WORKSPACE_ID, db: Session = Depends(get_db)):
-    """Retrieve the current active versioned brand rulebook."""
+def get_active_rulebook(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieve the current active versioned brand rulebook for the caller's workspace."""
     rulebook = db.query(Rulebook).filter(
-        Rulebook.workspace_id == workspace_id,
+        Rulebook.workspace_id == current_user.workspace_id,
         Rulebook.status == "ACTIVE"
     ).first()
     
     if not rulebook:
-        raise HTTPException(status_code=404, detail="Active rulebook not found")
+        raise HTTPException(status_code=404, detail="Active rulebook not found for this workspace.")
         
     rules = db.query(Rule).filter(Rule.rulebook_id == rulebook.id).all()
     
@@ -62,8 +66,13 @@ async def compile_guideline_document(
     
     if file:
         source_filename = file.filename or "uploaded_guideline"
-        content_bytes = await file.read()
-        guideline_content = parse_uploaded_file(source_filename, content_bytes)
+        try:
+            content_bytes = await read_uploaded_file_safely(file, settings.MAX_UPLOAD_SIZE_MB)
+            guideline_content = parse_uploaded_file(source_filename, content_bytes)
+        except ValueError as ve:
+            if "exceeds maximum permitted size" in str(ve):
+                raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(ve))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     elif text:
         guideline_content = text
     else:
@@ -86,18 +95,19 @@ def publish_rulebook_version(
     title: str = Form(...),
     version: str = Form(...),
     rules_json: str = Form(...),
-    actor_id: str = Form("usr-manager-01"),
-    workspace_id: str = Form(settings.DEFAULT_WORKSPACE_ID),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Publish an official new version of the Brand Rulebook after human confirmation.
+    Restricted strictly to Workspace Admins and Brand Managers.
     Appends RULEBOOK_ACTIVATION event to the cryptographic audit chain.
     """
     import json
     parsed_rules = json.loads(rules_json)
+    workspace_id = current_user.workspace_id
     
-    # Archive any previous active rulebooks
+    # Archive any previous active rulebooks in this workspace
     prev = db.query(Rulebook).filter(
         Rulebook.workspace_id == workspace_id,
         Rulebook.status == "ACTIVE"
@@ -141,8 +151,8 @@ def publish_rulebook_version(
         db=db,
         workspace_id=workspace_id,
         event_type="RULEBOOK_ACTIVATION",
-        actor_id=actor_id,
-        actor_role="BRAND_MANAGER",
+        actor_id=current_user.id,
+        actor_role=current_user.role,
         details={
             "rulebook_id": new_rulebook.id,
             "version": version,
@@ -157,12 +167,21 @@ def publish_rulebook_version(
 def update_rule(
     rule_id: str,
     payload: RuleUpdate,
+    current_user: User = Depends(require_roles("ADMIN", "BRAND_MANAGER")),
     db: Session = Depends(get_db)
 ):
-    """Update rule parameters, pass/fail examples, or ambiguity resolution."""
-    rule = db.query(Rule).filter(Rule.id == rule_id).first()
+    """
+    Update rule parameters, pass/fail examples, or ambiguity resolution.
+    Scoped strictly to caller's workspace.
+    """
+    rule = (
+        db.query(Rule)
+        .join(Rulebook, Rule.rulebook_id == Rulebook.id)
+        .filter(Rule.id == rule_id, Rulebook.workspace_id == current_user.workspace_id)
+        .first()
+    )
     if not rule:
-        raise HTTPException(status_code=404, detail="Rule not found")
+        raise HTTPException(status_code=404, detail="Rule not found.")
         
     update_data = payload.model_dump(exclude_unset=True)
     for field, val in update_data.items():
@@ -173,11 +192,20 @@ def update_rule(
     return RuleResponse.model_validate(rule)
 
 @router.post("/rules/{rule_id}/run-tests")
-def run_rule_unit_tests(rule_id: str, db: Session = Depends(get_db)):
-    """Run unit tests on a specific rule to verify pass and fail examples."""
-    rule = db.query(Rule).filter(Rule.id == rule_id).first()
+def run_rule_unit_tests(
+    rule_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Run unit tests on a specific rule in caller's workspace."""
+    rule = (
+        db.query(Rule)
+        .join(Rulebook, Rule.rulebook_id == Rulebook.id)
+        .filter(Rule.id == rule_id, Rulebook.workspace_id == current_user.workspace_id)
+        .first()
+    )
     if not rule:
-        raise HTTPException(status_code=404, detail="Rule not found")
+        raise HTTPException(status_code=404, detail="Rule not found.")
         
     test_cases = db.query(RuleTestCase).filter(RuleTestCase.rule_id == rule.id).all()
     results = []

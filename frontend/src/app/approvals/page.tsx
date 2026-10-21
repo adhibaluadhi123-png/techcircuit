@@ -16,12 +16,18 @@ import {
   Copy,
   Check,
   Lightbulb,
-  FileText
+  FileText,
+  Palette,
+  Tag,
+  ExternalLink,
+  Layers
 } from "lucide-react";
-import { api, ContentSubmission } from "@/lib/api";
+import { api, ContentSubmission, BrandAsset } from "@/lib/api";
 
 export default function ApprovalsPage() {
+  const [activeTab, setActiveTab] = useState<"content" | "assets">("content");
   const [queue, setQueue] = useState<ContentSubmission[]>([]);
+  const [assetQueue, setAssetQueue] = useState<BrandAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSub, setSelectedSub] = useState<ContentSubmission | null>(null);
   const [decisionModal, setDecisionModal] = useState<{
@@ -30,10 +36,33 @@ export default function ApprovalsPage() {
   }>({ open: false, type: null });
   const [reason, setReason] = useState("");
   const [exceptionCategory, setExceptionCategory] = useState("Campaign Specific");
+  const [assetDecisionModal, setAssetDecisionModal] = useState<{
+    open: boolean;
+    asset: BrandAsset | null;
+    type: "APPROVE" | "REJECT" | null;
+  }>({ open: false, asset: null, type: null });
+  const [assetReason, setAssetReason] = useState("");
   const [receiptResult, setReceiptResult] = useState<any | null>(null);
   const [approverId, setApproverId] = useState("usr-approver-01");
   const [approverName, setApproverName] = useState("Arthur Pendelton (Authorized Approver)");
   const [copiedReceipt, setCopiedReceipt] = useState(false);
+
+  const loadQueue = () => {
+    setLoading(true);
+    Promise.all([
+      api.getSubmissions().catch(() => []),
+      api.getAssetApprovalQueue().catch(() => [])
+    ])
+      .then(([subs, assets]) => {
+        setQueue(subs);
+        setAssetQueue(assets);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error loading queues:", err);
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
     loadQueue();
@@ -44,19 +73,6 @@ export default function ApprovalsPage() {
       if (savedName) setApproverName(savedName);
     }
   }, []);
-
-  const loadQueue = () => {
-    setLoading(true);
-    api.getSubmissions()
-      .then((data) => {
-        setQueue(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error loading submissions:", err);
-        setLoading(false);
-      });
-  };
 
   const handleDecisionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +87,7 @@ export default function ApprovalsPage() {
         selectedSub.id,
         decisionCode,
         reason,
-        exceptionCategory,
-        approverId
+        exceptionCategory
       );
       setReceiptResult({
         ...res,
@@ -89,6 +104,34 @@ export default function ApprovalsPage() {
     }
   };
 
+  const handleAssetDecisionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assetDecisionModal.asset || !assetDecisionModal.type) return;
+
+    try {
+      const decision = assetDecisionModal.type === "APPROVE" ? "APPROVED" : "REJECTED";
+      const res = await api.submitAssetApprovalDecision(
+        assetDecisionModal.asset.id,
+        decision,
+        assetReason
+      );
+      setReceiptResult({
+        receipt_id: res.receipt_id || `RCPT-ASSET-${assetDecisionModal.asset.id.slice(0, 8).toUpperCase()}`,
+        submission_title: `Brand Asset: ${assetDecisionModal.asset.name} (${assetDecisionModal.asset.category})`,
+        decision: res.decision,
+        approver: approverName,
+        content_hash: res.content_hash,
+        timestamp: new Date().toISOString()
+      });
+      setAssetDecisionModal({ open: false, asset: null, type: null });
+      setAssetReason("");
+      loadQueue();
+    } catch (err: any) {
+      console.error("Asset approval error:", err);
+      alert(`Asset approval rejected: ${err.message}`);
+    }
+  };
+
   const handleCopyReceipt = () => {
     if (!receiptResult) return;
     const certText = `=== CANON OFFICIAL BRAND GOVERNANCE CERTIFICATE ===\nReceipt ID: ${receiptResult.receipt_id || "RCPT-2026-001"}\nContent Title: ${receiptResult.submission_title || "Enterprise Launch Copy"}\nStatus: ${receiptResult.decision || "APPROVED"}\nApprover: ${receiptResult.approver}\nContent Hash: ${receiptResult.content_hash || "sha256-verified"}\nTimestamp: ${receiptResult.timestamp}\n=================================================`;
@@ -97,7 +140,10 @@ export default function ApprovalsPage() {
     setTimeout(() => setCopiedReceipt(false), 2000);
   };
 
-  const pendingCount = queue.filter((q) => q.current_status.includes("PENDING") || q.current_status.includes("UNDER")).length;
+  const pendingCount =
+    activeTab === "content"
+      ? queue.filter((q) => q.current_status.includes("PENDING") || q.current_status.includes("UNDER") || q.current_status.includes("SUBMITTED")).length
+      : assetQueue.length;
   const approvedCount = queue.filter((q) => q.current_status.includes("APPROVED")).length;
 
   return (
@@ -221,7 +267,156 @@ export default function ApprovalsPage() {
         </div>
       )}
 
-      {/* Submissions List */}
+      {/* Workflow Tabs */}
+      <div className="flex items-center gap-3 border-b border-[#F1E1D4] pb-3">
+        <button
+          onClick={() => setActiveTab("content")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === "content"
+              ? "bg-[#C87539] text-white shadow-xs"
+              : "bg-white text-[#8A7567] hover:text-[#382A20] border border-[#F1E1D4]"
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Campaign & Copy Submissions</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === "content" ? "bg-white/20 text-white" : "bg-stone-100 text-[#8A7567]"
+            }`}
+          >
+            {queue.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("assets")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === "assets"
+              ? "bg-[#C87539] text-white shadow-xs"
+              : "bg-white text-[#8A7567] hover:text-[#382A20] border border-[#F1E1D4]"
+          }`}
+        >
+          <Palette className="w-4 h-4" />
+          <span>Brand Assets Queue</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === "assets" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-900 border border-amber-200"
+            }`}
+          >
+            {assetQueue.length}
+          </span>
+        </button>
+      </div>
+
+      {/* ── Tab Content ── */}
+      {activeTab === "assets" ? (
+        /* Brand Assets Queue */
+        <div className="grid grid-cols-1 gap-5">
+          {assetQueue.length === 0 ? (
+            <div className="editorial-card p-12 text-center bg-white border border-[#F1E1D4] rounded-2xl">
+              <Palette className="w-8 h-8 text-[#8A7567] mx-auto mb-2 opacity-50" />
+              <div className="text-base font-bold text-[#382A20]">No Brand Assets Awaiting Approval</div>
+              <p className="text-xs text-[#8A7567] mt-1">
+                All uploaded brand assets, logos, and guidelines in this workspace have been reviewed.
+              </p>
+            </div>
+          ) : (
+            assetQueue.map((asset) => {
+              const isColor = asset.category === "COLORS" && asset.metadata_json?.hex;
+
+              return (
+                <div
+                  key={asset.id}
+                  className="editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs hover:shadow-sm transition-all space-y-4 rounded-2xl"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-3 border-b border-[#F1E1D4]">
+                    <div className="flex items-start gap-4">
+                      {/* Asset Thumbnail Preview */}
+                      <div className="w-16 h-16 rounded-2xl bg-[#FFFBF7] border border-[#F4E2D3] flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                        {isColor ? (
+                          <div className="w-full h-full" style={{ backgroundColor: asset.metadata_json.hex }} />
+                        ) : asset.file_path && (asset.file_format === "PNG" || asset.file_format === "SVG") ? (
+                          <img
+                            src={api.getAssetPreviewUrl(asset.id)}
+                            alt={asset.name}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        ) : (
+                          <Tag className="w-6 h-6 text-[#EA580C]" />
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-0.5 rounded-md bg-[#FFF0E2] text-[#C87539] font-bold text-xs uppercase">
+                            {asset.category}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-[#FFF1E6] text-[#C2410C] border border-[#FDBA74]">
+                            ⏳ PENDING APPROVAL
+                          </span>
+                        </div>
+                        <h2 className="text-lg font-bold text-[#382A20]">{asset.name}</h2>
+                        <p className="text-xs text-[#8A7567] mt-0.5">
+                          {asset.description || asset.intended_usage || "Official brand resource awaiting sign-off."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Metadata & Actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setAssetDecisionModal({ open: true, asset, type: "APPROVE" })}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#027A48] hover:bg-[#02663c] text-white text-xs font-bold shadow-xs cursor-pointer transition-all"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>Sign & Approve Asset</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAssetDecisionModal({ open: true, asset, type: "REJECT" })}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-rose-300 text-rose-700 hover:bg-rose-50 text-xs font-bold shadow-xs cursor-pointer transition-all"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Asset Details Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-[#FFFBF7] p-3 rounded-xl border border-[#F4E2D3]">
+                    <div>
+                      <span className="text-[#8A7567] block text-[10px] uppercase font-bold">Uploader:</span>
+                      <strong className="text-[#382A20]">{asset.uploader_name || "Creator"}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[#8A7567] block text-[10px] uppercase font-bold">Format & Size:</span>
+                      <strong className="text-[#382A20]">
+                        {asset.file_format || "FILE"} ({asset.file_size_bytes > 0 ? `${(asset.file_size_bytes / 1024).toFixed(0)} KB` : "Token"})
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-[#8A7567] block text-[10px] uppercase font-bold">Version:</span>
+                      <strong className="text-[#382A20]">v{asset.version}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[#8A7567] block text-[10px] uppercase font-bold">Date Uploaded:</span>
+                      <strong className="text-[#382A20]">{new Date(asset.created_at).toLocaleDateString()}</strong>
+                    </div>
+                    {asset.intended_usage && (
+                      <div className="col-span-2 sm:col-span-4 pt-1 border-t border-[#F4E2D3]/60">
+                        <span className="text-[#8A7567] block text-[10px] uppercase font-bold">Intended Usage:</span>
+                        <p className="text-[#382A20] text-xs mt-0.5">{asset.intended_usage}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        /* Submissions List */
       <div className="grid grid-cols-1 gap-5">
         {queue.length === 0 ? (
           <div className="editorial-card p-12 text-center bg-white border border-[#F1E1D4]">
@@ -326,6 +521,7 @@ export default function ApprovalsPage() {
           })
         )}
       </div>
+      )}
 
       {/* Decision Modal */}
       {decisionModal.open && selectedSub && (
@@ -390,6 +586,57 @@ export default function ApprovalsPage() {
                   className="px-4 py-2 rounded-xl bg-[#C87539] hover:bg-[#b0632b] text-white text-xs font-bold shadow-xs"
                 >
                   Confirm & Issue Certificate
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Asset Decision Modal */}
+      {assetDecisionModal.open && assetDecisionModal.asset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="editorial-card w-full max-w-md p-6 bg-white shadow-xl space-y-4">
+            <h2 className="text-base font-bold text-[#382A20]">
+              Confirm Asset {assetDecisionModal.type === "APPROVE" ? "Approval & Certification" : "Rejection"}
+            </h2>
+            <p className="text-xs text-[#8A7567]">
+              Asset: <strong className="text-[#382A20]">{assetDecisionModal.asset.name}</strong> ({assetDecisionModal.asset.category})
+            </p>
+
+            <form onSubmit={handleAssetDecisionSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-[#382A20]">
+                  {assetDecisionModal.type === "REJECT" ? "Rejection Reason (Mandatory)" : "Approver Notes (Optional)"}
+                </label>
+                <textarea
+                  required={assetDecisionModal.type === "REJECT"}
+                  value={assetReason}
+                  onChange={(e) => setAssetReason(e.target.value)}
+                  placeholder={
+                    assetDecisionModal.type === "REJECT"
+                      ? "Explain what needs correction (e.g. incorrect clearspace padding, color deviation)..."
+                      : "Optional notes for the asset record..."
+                  }
+                  className="editorial-input w-full p-2.5 text-xs mt-1 h-20"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#F1E1D4]">
+                <button
+                  type="button"
+                  onClick={() => setAssetDecisionModal({ open: false, asset: null, type: null })}
+                  className="px-4 py-2 rounded-xl bg-white border border-[#F1E1D4] text-xs font-semibold text-[#382A20] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`px-4 py-2 rounded-xl text-white text-xs font-bold shadow-xs cursor-pointer ${
+                    assetDecisionModal.type === "APPROVE" ? "bg-[#027A48] hover:bg-[#02663c]" : "bg-rose-600 hover:bg-rose-700"
+                  }`}
+                >
+                  {assetDecisionModal.type === "APPROVE" ? "Issue Official Certificate" : "Confirm Rejection"}
                 </button>
               </div>
             </form>

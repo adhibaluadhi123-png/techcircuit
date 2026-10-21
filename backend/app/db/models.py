@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import uuid
 from sqlalchemy import (
     Column, String, Text, Integer, Float, Boolean, DateTime,
-    ForeignKey, Enum, JSON
+    ForeignKey, Enum, JSON, UniqueConstraint, Index
 )
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -28,6 +28,8 @@ class Workspace(Base):
     facts = relationship("Fact", back_populates="workspace", cascade="all, delete-orphan")
     submissions = relationship("ContentSubmission", back_populates="workspace", cascade="all, delete-orphan")
     audit_events = relationship("AuditEvent", back_populates="workspace", cascade="all, delete-orphan")
+    brand_assets = relationship("BrandAsset", back_populates="workspace", cascade="all, delete-orphan")
+
 
 
 class User(Base):
@@ -276,6 +278,7 @@ class AuditEvent(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    sequence_number = Column(Integer, nullable=False, default=1)
     event_type = Column(String(100), nullable=False)  # RULEBOOK_ACTIVATION, SUBMISSION_CREATED, REVIEW_EXECUTED, OVERRIDE_LOGGED, APPROVAL_GRANTED, EXCEPTION_GRANTED
     actor_id = Column(String, nullable=False)
     actor_role = Column(String(50), nullable=False)
@@ -286,7 +289,24 @@ class AuditEvent(Base):
     details = Column(JSON, default=dict)
     created_at = Column(DateTime, default=utc_now)
 
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "prev_event_hash", name="uq_audit_workspace_prev_hash"),
+        Index("ix_audit_events_workspace_seq", "workspace_id", "sequence_number"),
+    )
+
     workspace = relationship("Workspace", back_populates="audit_events")
+
+
+class AuditCheckpoint(Base):
+    __tablename__ = "audit_checkpoints"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    sequence_number = Column(Integer, nullable=False)
+    block_count = Column(Integer, nullable=False)
+    head_hash = Column(String(64), nullable=False)
+    checkpoint_signature = Column(String(128), nullable=False)
+    created_at = Column(DateTime, default=utc_now)
 
 
 class ProposedAmendment(Base):
@@ -300,3 +320,37 @@ class ProposedAmendment(Base):
     status = Column(String(50), default="PROPOSED")  # PROPOSED, ACCEPTED, REJECTED
     override_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=utc_now)
+
+
+class BrandAsset(Base):
+    __tablename__ = "brand_assets"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    category = Column(String(50), nullable=False, index=True)  # LOGOS, TYPOGRAPHY, COLORS, MARKETING, GUIDELINES, OTHER
+    description = Column(Text, nullable=True)
+    intended_usage = Column(String(255), nullable=True)
+    file_path = Column(String(500), nullable=True)
+    file_name = Column(String(255), nullable=True)
+    file_format = Column(String(50), nullable=True)
+    file_size_bytes = Column(Integer, default=0)
+    mime_type = Column(String(100), nullable=True)
+    version = Column(String(50), default="1.0.0")
+    status = Column(String(50), default="PENDING_APPROVAL")  # DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, ARCHIVED
+    rejection_reason = Column(Text, nullable=True)
+    metadata_json = Column(JSON, default=dict)
+    uploader_id = Column(String, ForeignKey("users.id"), nullable=True)
+    uploader_name = Column(String(255), nullable=True)
+    uploader_email = Column(String(255), nullable=True)
+    approved_by_id = Column(String, ForeignKey("users.id"), nullable=True)
+    approved_by_name = Column(String(255), nullable=True)
+    approved_at = Column(DateTime, nullable=True)
+    parent_asset_id = Column(String, ForeignKey("brand_assets.id"), nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+
+    workspace = relationship("Workspace", back_populates="brand_assets")
+    uploader = relationship("User", foreign_keys=[uploader_id])
+    approver = relationship("User", foreign_keys=[approved_by_id])
+

@@ -11,6 +11,7 @@ from app.api.v1.reviews import router as reviews_router
 from app.api.v1.approvals import router as approvals_router
 from app.api.v1.governance import router as governance_router
 from app.api.v1.audit import router as audit_router
+from app.api.v1.assets import router as assets_router
 
 # Initialize database schema
 Base.metadata.create_all(bind=engine)
@@ -28,17 +29,17 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_STR}/docs"
 )
 
-# Restrictive yet flexible local CORS configuration for frontend
+# Strict local and preview CORS configuration for frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:8000",
-        "*"  # Local dev accessibility
+        "http://127.0.0.1:8000",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -50,6 +51,8 @@ app.include_router(reviews_router, prefix=settings.API_V1_STR)
 app.include_router(approvals_router, prefix=settings.API_V1_STR)
 app.include_router(governance_router, prefix=settings.API_V1_STR)
 app.include_router(audit_router, prefix=settings.API_V1_STR)
+app.include_router(assets_router, prefix=settings.API_V1_STR)
+
 
 
 @app.on_event("startup")

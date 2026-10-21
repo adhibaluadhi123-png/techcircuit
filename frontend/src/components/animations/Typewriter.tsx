@@ -50,10 +50,13 @@ export function Typewriter({
     }
 
     if (deleting && charIdx === 0) {
-      setDeleting(false);
-      if (loop || lineIdx < lines.length - 1) {
-        setLineIdx((l) => (l + 1) % lines.length);
-      }
+      const t = setTimeout(() => {
+        setDeleting(false);
+        if (loop || lineIdx < lines.length - 1) {
+          setLineIdx((l) => (l + 1) % lines.length);
+        }
+      }, 50);
+      return () => clearTimeout(t);
     }
   }, [charIdx, deleting, lineIdx, lines, loop, pause, speed]);
 

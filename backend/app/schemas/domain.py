@@ -394,3 +394,81 @@ class GovernanceInsightsResponse(BaseModel):
     proposed_amendments: List[ProposedAmendmentResponse]
     stale_claims_detected: int
     ambiguous_rules_count: int
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Brand Asset Schemas
+# ─────────────────────────────────────────────────────────────────────────────
+
+class BrandAssetBase(BaseModel):
+    name: str
+    category: str  # LOGOS, TYPOGRAPHY, COLORS, MARKETING, GUIDELINES, OTHER
+    description: Optional[str] = None
+    intended_usage: Optional[str] = None
+    version: Optional[str] = "1.0.0"
+    metadata_json: Optional[Dict[str, Any]] = None
+
+
+class BrandAssetCreate(BrandAssetBase):
+    pass
+
+
+class BrandColorCreate(BaseModel):
+    name: str
+    hex: str
+    role: str = "Primary"  # Primary, Secondary, Accent, Background, Text
+    intended_usage: Optional[str] = None
+
+
+class BrandAssetUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    intended_usage: Optional[str] = None
+    version: Optional[str] = None
+    metadata_json: Optional[Dict[str, Any]] = None
+
+
+class BrandAssetApproval(BaseModel):
+    decision: str  # APPROVED or REJECTED
+    reason: Optional[str] = None
+
+
+class BrandAssetResponse(BaseModel):
+    id: str
+    workspace_id: str
+    name: str
+    category: str
+    description: Optional[str] = None
+    intended_usage: Optional[str] = None
+    file_path: Optional[str] = None
+    file_name: Optional[str] = None
+    file_format: Optional[str] = None
+    file_size_bytes: int = 0
+    mime_type: Optional[str] = None
+    version: str = "1.0.0"
+    status: str
+    rejection_reason: Optional[str] = None
+    metadata_json: Dict[str, Any] = {}
+    uploader_id: Optional[str] = None
+    uploader_name: Optional[str] = None
+    uploader_email: Optional[str] = None
+    approved_by_id: Optional[str] = None
+    approved_by_name: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    parent_asset_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class BrandAssetStats(BaseModel):
+    total_assets: int
+    approved_assets: int
+    pending_approval: int
+    archived_assets: int
+    rejected_assets: int
+    categories_summary: Dict[str, int]
+

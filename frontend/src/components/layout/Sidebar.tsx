@@ -13,23 +13,23 @@ import { api, User as UserType } from "@/lib/api";
 
 const NAV_ITEMS = [
   { name: "Dashboard",          href: "/dashboard",  icon: LayoutDashboard, group: "core"    },
-  { name: "Brand Spec Review",  href: "/review",     icon: FileCheck2,      group: "core", badge: "HOT" },
-  { name: "Audit Findings",     href: "/findings",   icon: AlertCircle,     group: "core"    },
-  { name: "Brand Approvals",    href: "/approvals",  icon: CheckSquare,     group: "core"    },
-  { name: "Product Rulebook",   href: "/rulebook",   icon: BookOpen,        group: "library" },
-  { name: "Product Specs & Vault", href: "/facts",   icon: Database,        group: "library" },
-  { name: "Logos & Brand Kit",  href: "/assets",     icon: Palette,         group: "library", badge: "NEW" },
+  { name: "Review Content",     href: "/review",     icon: FileCheck2,      group: "core", badge: "HOT" },
+  { name: "Review Findings",    href: "/findings",   icon: AlertCircle,     group: "core"    },
+  { name: "Approvals",          href: "/approvals",  icon: CheckSquare,     group: "core"    },
+  { name: "Brand Rules",        href: "/rulebook",   icon: BookOpen,        group: "library" },
+  { name: "Approved Facts",     href: "/facts",      icon: Database,        group: "library" },
+  { name: "Brand Assets",       href: "/assets",     icon: Palette,         group: "library", badge: "NEW" },
   { name: "Analytics",          href: "/insights",   icon: BarChart3,       group: "intel"   },
-  { name: "Audit Chain",        href: "/audit",      icon: ShieldCheck,     group: "intel"   },
-  { name: "Operations Handbook",href: "/guide",      icon: HelpCircle,      group: "system"  },
-  { name: "LLM Settings",       href: "/settings",   icon: Cpu,             group: "system"  },
+  { name: "Audit History",      href: "/audit",      icon: ShieldCheck,     group: "intel"   },
+  { name: "User Guide",         href: "/guide",      icon: HelpCircle,      group: "system"  },
+  { name: "Settings",           href: "/settings",   icon: Cpu,             group: "system"  },
 ];
 
 const GROUPS: Record<string, string> = {
-  core:    "Core Tools",
-  library: "Knowledge Base",
-  intel:   "Intelligence",
-  system:  "System",
+  core:    "Review & Approvals",
+  library: "Brand Guidelines",
+  intel:   "Reports & History",
+  system:  "Help & Settings",
 };
 
 export function Sidebar() {
@@ -51,7 +51,7 @@ export function Sidebar() {
           const found = data.find((u) => u.id === savedId);
           setCurrentUser(found ?? (savedName && savedRole ? {
             id: savedId, email: savedEmail ?? "", full_name: savedName,
-            role: savedRole as any, workspace_id: "ws-apexdynamics-001",
+            role: savedRole as any, workspace_id: "ws-primary-001",
           } : null));
         } else if (data.length > 0) {
           setCurrentUser(data.find((u) => u.role === "CREATOR") ?? data[0]);
@@ -116,7 +116,7 @@ export function Sidebar() {
           <div className="flex items-center justify-between text-xs">
             <span className="font-extrabold text-[#201815] flex items-center gap-1.5">
               <Terminal className="w-3 h-3 text-[#FF8A3D]" />
-              ApexDynamics
+              Brand Workspace
             </span>
             <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]">
               <span className="relative flex h-1.5 w-1.5">
