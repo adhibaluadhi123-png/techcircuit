@@ -1,5 +1,6 @@
 import json
 import time
+import os
 from typing import Dict, Any, Optional, Callable
 import httpx
 from app.config import settings
@@ -65,6 +66,24 @@ class LLMProvider:
                     elapsed = round((time.time() - t_zero) * 1000, 2)
                     return {'result': parsed_structure, 'disclosure': {'provider': 'Local Ollama Inference', 'model': self.model, 'latency_ms': elapsed, 'is_local': True, 'is_fallback': False, 'privacy_mode': 'Zero Cloud Data Leakage (Local Only)', 'prompt_injection_screened': True}}
         except Exception as err:
+            hf_token = os.environ.get('HF_TOKEN') or os.environ.get('HUGGING_FACE_HUB_TOKEN')
+            if hf_token:
+                try:
+                    from huggingface_hub import InferenceClient
+                    client = InferenceClient(model='Qwen/Qwen2.5-1.5B-Instruct', token=hf_token, timeout=self.timeout)
+                    chat_res = client.chat.completions.create(
+                        messages=[{'role': 'system', 'content': fortified_instruction}, {'role': 'user', 'content': user_prompt}],
+                        max_tokens=512,
+                        temperature=0.1
+                    )
+                    raw_txt = chat_res.choices[0].message.content or '{}'
+                    if '{' in raw_txt and '}' in raw_txt:
+                        clean_json = raw_txt[raw_txt.find('{'):raw_txt.rfind('}') + 1]
+                        parsed_hf = json.loads(clean_json)
+                        elapsed = round((time.time() - t_zero) * 1000, 2)
+                        return {'result': parsed_hf, 'disclosure': {'provider': 'Hugging Face Cloud Inference', 'model': 'Qwen/Qwen2.5-1.5B-Instruct', 'latency_ms': elapsed, 'is_local': False, 'is_fallback': False, 'privacy_mode': 'Cloud Zero-Retention', 'prompt_injection_screened': True}}
+                except Exception:
+                    pass
             if not settings.ALLOW_MOCK_LLM_FALLBACK:
                 raise RuntimeError(f'Ollama inference failed: {str(err)}')
         elapsed = round((time.time() - t_zero) * 1000, 2)

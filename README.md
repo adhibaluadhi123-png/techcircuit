@@ -1,3 +1,15 @@
+---
+title: FIDELIS Brand Governance Platform
+emoji: 🛡️
+colorFrom: yellow
+colorTo: red
+sdk: gradio
+sdk_version: 4.44.0
+app_file: app.py
+pinned: false
+license: mit
+---
+
 # FIDELIS: Brand Governance Compiler & Verification Platform
 
 FIDELIS is an open-source, deterministic brand governance compiler and content verification platform. It compiles static brand guidelines, product taxonomy specs, and trademark rules into an executable, testable rulebook—evaluating marketing copy, packaging, and digital assets against verified evidence.
