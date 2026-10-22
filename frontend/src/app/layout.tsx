@@ -3,8 +3,12 @@ import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
-  title: "CANON | Enterprise Brand Governance Compiler",
+  title: "FIDELIS | Enterprise Brand Governance Platform",
   description: "Open-source Brand Governance Compiler. Converts brand guidelines into versioned testable rules, validates claims against evidence, and enforces No Citation, No Blocking Flag.",
+  icons: {
+    icon: "/fidelis_shield.jpg",
+    apple: "/fidelis_shield.jpg",
+  },
 };
 
 export default function RootLayout({

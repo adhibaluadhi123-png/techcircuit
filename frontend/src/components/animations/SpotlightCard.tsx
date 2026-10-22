@@ -60,16 +60,13 @@ export function SpotlightCard({
       }}
       {...props}
     >
-      {/* Dynamic Cursor Spotlight Layer */}
       <div
-        className="pointer-events-none absolute -inset-px transition-opacity duration-300"
+        className="pointer-events-none absolute -inset-px opacity-0 transition-opacity duration-300 rounded-[inherit]"
         style={{
           opacity,
-          background: `radial-gradient(650px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 55%)`,
+          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 40%)`,
         }}
       />
-      {/* Ambient Pale Orange Corner Accent */}
-      <div className="pointer-events-none absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#FF8A3D]/10 to-transparent rounded-bl-full" />
       <div className="relative z-10">{children}</div>
     </div>
   );

@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface TypewriterProps {
   lines: string[];
-  speed?: number;      // ms per character
-  pause?: number;      // ms pause between lines
+  speed?: number;
+  pause?: number;
   className?: string;
   cursorClassName?: string;
   loop?: boolean;
@@ -60,10 +60,22 @@ export function Typewriter({
     }
   }, [charIdx, deleting, lineIdx, lines, loop, pause, speed]);
 
+  useEffect(() => {
+    const interval = setInterval(() => setBlinking((b) => !b), 530);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <span className={className}>
-      {displayed}
-      <span className={`${cursorClassName} animate-pulse font-thin`}>|</span>
+    <span className={`inline-flex items-center ${className}`}>
+      <span>{displayed}</span>
+      <span
+        className={`ml-0.5 font-mono font-light select-none transition-opacity duration-100 ${
+          blinking ? "opacity-100" : "opacity-0"
+        } ${cursorClassName}`}
+        aria-hidden="true"
+      >
+        |
+      </span>
     </span>
   );
 }

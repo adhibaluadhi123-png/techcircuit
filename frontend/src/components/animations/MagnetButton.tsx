@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 interface MagnetButtonProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
-  strength?: number; // Distance multiplier
+  strength?: number;
 }
 
 export function MagnetButton({

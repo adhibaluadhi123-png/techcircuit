@@ -1,148 +1,83 @@
-"""Claim Ledger Engine for CANON Brand Governance.
-Extracts measurable, comparative, and superlative claims from content
-and compares them against the Approved Fact Vault with evidence expiry.
-"""
 from datetime import datetime, timezone
 import re
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.db.models import Fact, ExtractedClaim
 from app.core.llm_provider import llm_client
+HYPERBOLE_EXPRESSIONS = ("\\b(?:world\\'?s\\s+)?(best|fastest|cheapest|greatest|most\\s+powerful|#1|leading|unmatched|unrivaled)\\b", '\\b(guaranteed\\s+(?:100%|always))\\b', '\\b(only\\s+platform\\s+that)\\b')
 
-SUPERLATIVE_PATTERNS = [
-    r'\b(?:world\'?s\s+)?(best|fastest|cheapest|greatest|most\s+powerful|#1|leading|unmatched|unrivaled)\b',
-    r'\b(guaranteed\s+(?:100%|always))\b',
-    r'\b(only\s+platform\s+that)\b'
-]
+class LexicalScorer:
+
+    @staticmethod
+    def rank_fact_alignment(query_tokens: set, target_subject: str) -> int:
+        subject_tokens = set(target_subject.lower().split())
+        return len(query_tokens.intersection(subject_tokens))
+
+class AssertionEvaluator:
+
+    @staticmethod
+    def check_hyperbole(assertion: str, tag: str) -> Optional[Dict[str, Any]]:
+        if tag != 'SUPERLATIVE':
+            return None
+        return {'claim_text': assertion, 'claim_type': tag, 'matched_fact_id': None, 'status': 'NEEDS_PROOF', 'reasoning': f"Unsubstantiated superlative '{assertion}' requires certified evidence document before publication."}
+
+    @staticmethod
+    def check_temporal_freshness(claim_text: str, tag: str, anchor: Fact, reference_epoch: datetime) -> Optional[Dict[str, Any]]:
+        horizon = anchor.valid_until if anchor.valid_until.tzinfo else anchor.valid_until.replace(tzinfo=timezone.utc)
+        if horizon >= reference_epoch:
+            return None
+        return {'claim_text': claim_text, 'claim_type': tag, 'matched_fact_id': anchor.id, 'status': 'STALE', 'reasoning': f"Approved fact '{anchor.fact_code}' expired on {anchor.valid_until.strftime('%Y-%m-%d')}. Owner: {anchor.owner_name} ({anchor.owner_email})."}
+
+    @staticmethod
+    def check_metric_discrepancy(claim_text: str, tag: str, anchor: Fact) -> Optional[Dict[str, Any]]:
+        if not anchor.normalized_value:
+            return None
+        extracted_digits = re.findall('\\d+(?:\\.\\d+)?', claim_text)
+        if extracted_digits and anchor.normalized_value not in extracted_digits:
+            return {'claim_text': claim_text, 'claim_type': tag, 'matched_fact_id': anchor.id, 'status': 'CONTRADICTED', 'reasoning': f"Claim states '{', '.join(extracted_digits)}' but approved fact {anchor.fact_code} specifies certified value of '{anchor.normalized_value}{anchor.normalized_unit or ''}'."}
+        return None
+
+class VaultCorroborator:
+
+    @classmethod
+    def corroborate_statement(cls, item: Dict[str, Any], corpus: List[Fact], epoch: datetime) -> Dict[str, Any]:
+        text_body = item.get('claim_text', '')
+        kind = item.get('claim_type', 'FACTUAL')
+        hyperbole_flag = AssertionEvaluator.check_hyperbole(text_body, kind)
+        if hyperbole_flag:
+            return hyperbole_flag
+        words = set(text_body.lower().split())
+        candidates = [(LexicalScorer.rank_fact_alignment(words, f.subject), f) for f in corpus]
+        sorted_candidates = sorted(candidates, key=lambda x: x[0], reverse=True)
+        top_score, top_anchor = sorted_candidates[0] if sorted_candidates and sorted_candidates[0][0] > 0 else (0, None)
+        if not top_anchor or top_score == 0:
+            return {'claim_text': text_body, 'claim_type': kind, 'matched_fact_id': None, 'status': 'UNSUPPORTED', 'reasoning': 'No matching approved fact found in the Approved Fact Vault.'}
+        stale_flag = AssertionEvaluator.check_temporal_freshness(text_body, kind, top_anchor, epoch)
+        if stale_flag:
+            return stale_flag
+        contradiction_flag = AssertionEvaluator.check_metric_discrepancy(text_body, kind, top_anchor)
+        if contradiction_flag:
+            return contradiction_flag
+        return {'claim_text': text_body, 'claim_type': kind, 'matched_fact_id': top_anchor.id, 'status': 'SUPPORTED', 'reasoning': f'Verified against approved fact {top_anchor.fact_code} ({top_anchor.source_document}).'}
 
 class ClaimLedgerEngine:
-    """Manages claim extraction, date verification, and claim-to-fact alignment."""
+    PROMPT_INSTRUCTION = "You are the CANON Claim Extractor. Identify any promotional claims, numerical figures, superlatives (e.g. 'fastest', 'best'), or comparative statements in the text. Return a JSON object with key 'claims', containing a list of objects with: 'claim_text' (string), 'claim_type' ('NUMERICAL', 'SUPERLATIVE', 'COMPARATIVE', 'FACTUAL'), and 'normalized_value' (string or null)."
 
     async def extract_claims(self, text: str) -> List[Dict[str, Any]]:
-        """Extract explicit promotional, numerical, and comparative claims."""
-        system_prompt = (
-            "You are the CANON Claim Extractor. Identify any promotional claims, numerical figures, "
-            "superlatives (e.g. 'fastest', 'best'), or comparative statements in the text. "
-            "Return a JSON object with key 'claims', containing a list of objects with: "
-            "'claim_text' (string), 'claim_type' ('NUMERICAL', 'SUPERLATIVE', 'COMPARATIVE', 'FACTUAL'), "
-            "and 'normalized_value' (string or null)."
-        )
-        user_prompt = f"Extract all claims from:\n\n{text}"
-        
-        response = await llm_client.generate_structured(system_prompt, user_prompt)
-        claims = response.get("result", {}).get("claims", [])
-        
-        # Augment with deterministic regex checks for superlatives and numbers
-        for pat in SUPERLATIVE_PATTERNS:
-            for m in re.finditer(pat, text, re.IGNORECASE):
-                matched = m.group(0)
-                if not any(c.get("claim_text") == matched for c in claims):
-                    claims.append({
-                        "claim_text": matched,
-                        "claim_type": "SUPERLATIVE",
-                        "normalized_value": None
-                    })
-                    
-        return claims
+        query = f'Extract all claims from:\n\n{text}'
+        payload = await llm_client.generate_structured(self.PROMPT_INSTRUCTION, query)
+        aggregated = payload.get('result', {}).get('claims', [])
+        existing_texts = {c.get('claim_text') for c in aggregated}
+        for pattern in HYPERBOLE_EXPRESSIONS:
+            for hit in re.finditer(pattern, text, re.IGNORECASE):
+                segment = hit.group(0)
+                if segment not in existing_texts:
+                    aggregated.append({'claim_text': segment, 'claim_type': 'SUPERLATIVE', 'normalized_value': None})
+                    existing_texts.add(segment)
+        return aggregated
 
-    def verify_claims_against_vault(
-        self,
-        db: Session,
-        workspace_id: str,
-        claims: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """
-        Evaluate extracted claims against the Approved Fact Vault:
-        Assigns status: SUPPORTED, STALE, CONTRADICTED, UNSUPPORTED, or NEEDS_PROOF.
-        """
-        now = datetime.now(timezone.utc)
+    def verify_claims_against_vault(self, db: Session, workspace_id: str, claims: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         active_facts = db.query(Fact).filter(Fact.workspace_id == workspace_id).all()
-        results = []
-
-        for c in claims:
-            claim_text = c.get("claim_text", "")
-            claim_type = c.get("claim_type", "FACTUAL")
-            lower_claim = claim_text.lower()
-            
-            # Superlatives without explicit certified facts always require proof
-            if claim_type == "SUPERLATIVE":
-                results.append({
-                    "claim_text": claim_text,
-                    "claim_type": claim_type,
-                    "matched_fact_id": None,
-                    "status": "NEEDS_PROOF",
-                    "reasoning": f"Unsubstantiated superlative '{claim_text}' requires certified evidence document before publication."
-                })
-                continue
-
-            # Look for matching approved facts
-            best_fact: Optional[Fact] = None
-            best_match_score = 0
-            
-            for fact in active_facts:
-                subject_words = fact.subject.lower().split()
-                matches = sum(1 for w in subject_words if w in lower_claim)
-                if matches > best_match_score:
-                    best_match_score = matches
-                    best_fact = fact
-
-            if not best_fact or best_match_score == 0:
-                results.append({
-                    "claim_text": claim_text,
-                    "claim_type": claim_type,
-                    "matched_fact_id": None,
-                    "status": "UNSUPPORTED",
-                    "reasoning": "No matching approved fact found in the Approved Fact Vault."
-                })
-                continue
-
-            # We found a matching fact! Check validity dates
-            # Handle naive datetime from SQLite if needed
-            fact_valid_until = best_fact.valid_until
-            if fact_valid_until.tzinfo is None:
-                fact_valid_until = fact_valid_until.replace(tzinfo=timezone.utc)
-                
-            if fact_valid_until < now:
-                # Fact is expired / stale!
-                results.append({
-                    "claim_text": claim_text,
-                    "claim_type": claim_type,
-                    "matched_fact_id": best_fact.id,
-                    "status": "STALE",
-                    "reasoning": (
-                        f"Approved fact '{best_fact.fact_code}' expired on "
-                        f"{best_fact.valid_until.strftime('%Y-%m-%d')}. Owner: {best_fact.owner_name} ({best_fact.owner_email})."
-                    )
-                })
-                continue
-
-            # Check for contradiction in numerical value if fact has normalized value
-            if best_fact.normalized_value:
-                # If claim asserts a number different from normalized_value
-                numbers_in_claim = re.findall(r'\d+(?:\.\d+)?', claim_text)
-                if numbers_in_claim and best_fact.normalized_value not in numbers_in_claim:
-                    results.append({
-                        "claim_text": claim_text,
-                        "claim_type": claim_type,
-                        "matched_fact_id": best_fact.id,
-                        "status": "CONTRADICTED",
-                        "reasoning": (
-                            f"Claim states '{', '.join(numbers_in_claim)}' but approved fact {best_fact.fact_code} "
-                            f"specifies certified value of '{best_fact.normalized_value}{best_fact.normalized_unit or ''}'."
-                        )
-                    })
-                    continue
-
-            # All checks pass: Claim is fully supported
-            results.append({
-                "claim_text": claim_text,
-                "claim_type": claim_type,
-                "matched_fact_id": best_fact.id,
-                "status": "SUPPORTED",
-                "reasoning": f"Verified against approved fact {best_fact.fact_code} ({best_fact.source_document})."
-            })
-
-        return results
-
-
+        now_utc = datetime.now(timezone.utc)
+        return [VaultCorroborator.corroborate_statement(entry, active_facts, now_utc) for entry in claims]
 claim_ledger = ClaimLedgerEngine()

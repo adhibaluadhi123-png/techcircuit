@@ -1,143 +1,132 @@
-"""Document Ingestion Parser for CANON Brand Governance.
-Validates file signatures (magic bytes) to prevent deceptive file uploads,
-enforces defensive format parsing, and handles text, documents, and image assets.
-"""
 import io
 import re
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any, Optional, Callable
 import docx
 import pypdf
 from app.core.visual_audit import analyze_image_asset
+FILE_SIGNATURES = {'pdf': [b'%PDF-'], 'docx': [b'PK\x03\x04'], 'png': [b'\x89PNG\r\n\x1a\n'], 'jpg': [b'\xff\xd8\xff'], 'jpeg': [b'\xff\xd8\xff']}
+DANGEROUS_PREAMBLES = (b'MZ', b'\x7fELF', b'#!')
 
-# Magic Byte Signatures for supported file formats
-FILE_SIGNATURES = {
-    "pdf": [b"%PDF-"],
-    "docx": [b"PK\x03\x04"],
-    "png": [b"\x89PNG\r\n\x1a\n"],
-    "jpg": [b"\xff\xd8\xff"],
-    "jpeg": [b"\xff\xd8\xff"],
-}
+class SignatureVerifier:
 
+    @classmethod
+    def verify(cls, target_path: str, byte_payload: bytes) -> str:
+        if not byte_payload:
+            raise ValueError('Uploaded file is empty (0 bytes).')
+        segments = target_path.lower().rsplit('.', 1)
+        if len(segments) < 2 or not segments[1]:
+            raise ValueError('Missing file extension.')
+        ext_label = segments[1]
+        if any((byte_payload.startswith(p) for p in DANGEROUS_PREAMBLES)):
+            raise ValueError('Dangerous file signature detected: binary executables and scripts are prohibited.')
+        if ext_label in FILE_SIGNATURES:
+            allowed_prefixes = FILE_SIGNATURES[ext_label]
+            if not any((byte_payload.startswith(pfx) for pfx in allowed_prefixes)):
+                raise ValueError(f"File signature mismatch for '.{ext_label}': deceptive or corrupted file format.")
+        elif ext_label == 'txt':
+            if b'\x00' in byte_payload[:4096]:
+                raise ValueError('Binary content detected in plain text file.')
+        else:
+            raise ValueError(f"Unsupported file extension '.{ext_label}'. Supported: .pdf, .docx, .txt, .png, .jpg, .jpeg")
+        return ext_label
 
 def validate_file_signature(filename: str, content_bytes: bytes) -> str:
-    """
-    Validate that the file header magic bytes match the stated file extension.
-    Rejects deceptive files (e.g. executable or script renamed to .pdf).
-    """
-    if not content_bytes or len(content_bytes) == 0:
-        raise ValueError("Uploaded file is empty (0 bytes).")
+    return SignatureVerifier.verify(filename, content_bytes)
 
-    ext = filename.lower().split(".")[-1] if "." in filename else ""
-    if not ext:
-        raise ValueError("Missing file extension.")
+class TextExtractionPipeline:
 
-    # Check for known dangerous executable headers
-    if content_bytes.startswith(b"MZ") or content_bytes.startswith(b"\x7fELF") or content_bytes.startswith(b"#!"):
-        raise ValueError("Dangerous file signature detected: binary executables and scripts are prohibited.")
-
-    if ext in FILE_SIGNATURES:
-        valid_signatures = FILE_SIGNATURES[ext]
-        matches = any(content_bytes.startswith(sig) for sig in valid_signatures)
-        if not matches:
-            raise ValueError(f"File signature mismatch for '.{ext}': deceptive or corrupted file format.")
-    elif ext == "txt":
-        # Plain text must not contain binary null bytes
-        if b"\x00" in content_bytes[:4096]:
-            raise ValueError("Binary content detected in plain text file.")
-    else:
-        raise ValueError(f"Unsupported file extension '.{ext}'. Supported: .pdf, .docx, .txt, .png, .jpg, .jpeg")
-
-    return ext
-
+    @staticmethod
+    def decode_plain(byte_payload: bytes) -> str:
+        try:
+            return byte_payload.decode('utf-8')
+        except UnicodeDecodeError:
+            return byte_payload.decode('latin-1', errors='replace')
 
 def extract_text_from_txt(content_bytes: bytes) -> str:
-    """Extract and decode plain text."""
-    try:
-        return content_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        return content_bytes.decode("latin-1", errors="replace")
+    return TextExtractionPipeline.decode_plain(content_bytes)
 
+class DocxTextExtractor:
+
+    @staticmethod
+    def extract_prose(byte_payload: bytes) -> str:
+        try:
+            document_obj = docx.Document(io.BytesIO(byte_payload))
+            lines = [p.text for p in document_obj.paragraphs if p.text.strip()]
+            for tbl in document_obj.tables:
+                for row_node in tbl.rows:
+                    cell_segments = [c.text.strip() for c in row_node.cells if c.text.strip()]
+                    if cell_segments:
+                        lines.append(' | '.join(cell_segments))
+            return '\n\n'.join(lines)
+        except Exception as err:
+            raise ValueError(f'Malformed or corrupted DOCX document: {str(err)}')
 
 def extract_text_from_docx(content_bytes: bytes) -> str:
-    """Extract paragraphs and table text from DOCX with malformed file handling."""
-    try:
-        doc = docx.Document(io.BytesIO(content_bytes))
-        paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-        for table in doc.tables:
-            for row in table.rows:
-                row_texts = [cell.text.strip() for cell in row.cells if cell.text.strip()]
-                if row_texts:
-                    paragraphs.append(" | ".join(row_texts))
-        return "\n\n".join(paragraphs)
-    except Exception as e:
-        raise ValueError(f"Malformed or corrupted DOCX document: {str(e)}")
+    return DocxTextExtractor.extract_prose(content_bytes)
 
+class PdfTextExtractor:
+
+    @staticmethod
+    def extract_pages(byte_payload: bytes) -> str:
+        try:
+            pdf_engine = pypdf.PdfReader(io.BytesIO(byte_payload))
+            aggregated = []
+            for sheet in pdf_engine.pages:
+                try:
+                    slice_content = sheet.extract_text()
+                    if slice_content:
+                        aggregated.append(slice_content.strip())
+                except Exception:
+                    continue
+            if not aggregated:
+                return '[PDF scanned or empty text layer. Visual inspection required.]'
+            return '\n\n'.join(aggregated)
+        except Exception as fault:
+            raise ValueError(f'Malformed or corrupted PDF document: {str(fault)}')
 
 def extract_text_from_pdf(content_bytes: bytes) -> str:
-    """Extract text from PDF pages using pypdf with malformed file handling."""
-    try:
-        reader = pypdf.PdfReader(io.BytesIO(content_bytes))
-        pages_text = []
-        for idx, page in enumerate(reader.pages):
-            try:
-                extracted = page.extract_text()
-                if extracted:
-                    pages_text.append(extracted.strip())
-            except Exception:
-                continue
-        if not pages_text:
-            return "[PDF scanned or empty text layer. Visual inspection required.]"
-        return "\n\n".join(pages_text)
-    except Exception as e:
-        raise ValueError(f"Malformed or corrupted PDF document: {str(e)}")
+    return PdfTextExtractor.extract_pages(content_bytes)
 
+class UploadedFileParser:
+
+    @staticmethod
+    def _render_image_summary(content: bytes, tag: str) -> str:
+        metrics = analyze_image_asset(content, tag)
+        swatch_sample = ', '.join((entry['hex'] for entry in metrics['dominant_colors'][:3]))
+        return f"[Image Asset: {tag} ({metrics['width']}x{metrics['height']}px, format: {metrics['format']}). Aspect ratio: {metrics['aspect_ratio']}:1. Dominant palette: {swatch_sample}. Visual brand and contrast checks completed.]"
+    PARSER_DISPATCH: Dict[str, Callable[[bytes, str], str]] = {'txt': lambda b, _: extract_text_from_txt(b), 'docx': lambda b, _: extract_text_from_docx(b), 'pdf': lambda b, _: extract_text_from_pdf(b), 'png': lambda b, tag: UploadedFileParser._render_image_summary(b, tag), 'jpg': lambda b, tag: UploadedFileParser._render_image_summary(b, tag), 'jpeg': lambda b, tag: UploadedFileParser._render_image_summary(b, tag)}
+
+    @classmethod
+    def parse(cls, target_name: str, byte_payload: bytes) -> str:
+        ext_verified = SignatureVerifier.verify(target_name, byte_payload)
+        handler = cls.PARSER_DISPATCH.get(ext_verified)
+        if not handler:
+            raise ValueError(f"Unsupported file type '.{ext_verified}'. Supported: .pdf, .docx, .txt, .png, .jpg, .jpeg")
+        return handler(byte_payload, target_name)
 
 def parse_uploaded_file(filename: str, content_bytes: bytes) -> str:
-    """
-    Dispatcher based on validated file format.
-    Validates file magic bytes and extracts clean content.
-    """
-    ext = validate_file_signature(filename, content_bytes)
+    return UploadedFileParser.parse(filename, content_bytes)
 
-    if ext == "txt":
-        return extract_text_from_txt(content_bytes)
-    elif ext == "docx":
-        return extract_text_from_docx(content_bytes)
-    elif ext == "pdf":
-        return extract_text_from_pdf(content_bytes)
-    elif ext in ["png", "jpg", "jpeg"]:
-        analysis = analyze_image_asset(content_bytes, filename)
-        dominant_colors_str = ", ".join(c["hex"] for c in analysis["dominant_colors"][:3])
-        return (
-            f"[Image Asset: {filename} ({analysis['width']}x{analysis['height']}px, format: {analysis['format']}). "
-            f"Aspect ratio: {analysis['aspect_ratio']}:1. Dominant palette: {dominant_colors_str}. "
-            f"Visual brand and contrast checks completed.]"
-        )
-    else:
-        raise ValueError(f"Unsupported file type '.{ext}'. Supported: .pdf, .docx, .txt, .png, .jpg, .jpeg")
+class BoundedStreamReader:
+    BLOCK_CAPACITY = 64 * 1024
 
+    @classmethod
+    async def read_bounded(cls, source_stream: Any, size_ceiling_mb: int) -> bytes:
+        max_bytes_threshold = size_ceiling_mb * 1024 * 1024
+        stream_chunks = []
+        bytes_ingested = 0
+        while True:
+            slice_data = await source_stream.read(cls.BLOCK_CAPACITY)
+            if not slice_data:
+                break
+            bytes_ingested += len(slice_data)
+            if bytes_ingested > max_bytes_threshold:
+                raise ValueError(f'Uploaded file exceeds maximum permitted size of {size_ceiling_mb}MB.')
+            stream_chunks.append(slice_data)
+        assembled = b''.join(stream_chunks)
+        if not assembled:
+            raise ValueError('Uploaded file is empty (0 bytes).')
+        return assembled
 
 async def read_uploaded_file_safely(file: Any, max_size_mb: int) -> bytes:
-    """
-    Read an uploaded file in 64KB stream chunks to enforce upload size limits
-    without loading oversized files into memory. Validates non-empty content.
-    """
-    chunk_size = 64 * 1024
-    max_bytes = max_size_mb * 1024 * 1024
-    chunks = []
-    total_read = 0
-
-    while True:
-        chunk = await file.read(chunk_size)
-        if not chunk:
-            break
-        total_read += len(chunk)
-        if total_read > max_bytes:
-            raise ValueError(f"Uploaded file exceeds maximum permitted size of {max_size_mb}MB.")
-        chunks.append(chunk)
-
-    data = b"".join(chunks)
-    if len(data) == 0:
-        raise ValueError("Uploaded file is empty (0 bytes).")
-    return data
-
+    return await BoundedStreamReader.read_bounded(file, max_size_mb)

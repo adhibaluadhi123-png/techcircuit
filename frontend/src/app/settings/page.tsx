@@ -1,42 +1,98 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Cpu,
   ShieldCheck,
-  Lock,
   EyeOff,
-  Server,
-  FileCheck2,
   CheckCircle2,
-  ShieldAlert,
-  Sparkles,
   Lightbulb,
   Check
 } from "lucide-react";
 
-export default function SettingsPage() {
-  const [testRedactText, setTestRedactText] = useState(
-    "Confidential launch draft: Project Nova begins next quarter at $499 per mo. Use internal auth token sk-99887766554433221100aabb for early beta testing."
+interface MaskingRule {
+  pattern: RegExp;
+  mask: string;
+}
+
+const REDACTION_PIPELINE: readonly MaskingRule[] = [
+  {
+    pattern: /\b(Project\s+[A-Z][a-zA-Z0-9]+)\b/g,
+    mask: "[CONFIDENTIAL_PROJECT_REDACTED]",
+  },
+  {
+    pattern: /\$(\d+(?:,\d{3})*)\s*(per|\/)\s*(mo|year)/gi,
+    mask: "[SENSITIVE_PRICING_REDACTED]",
+  },
+  {
+    pattern: /\b(sk-[a-zA-Z0-9]{20,})\b/g,
+    mask: "[API_KEY_MASKED]",
+  },
+];
+
+const RUNTIME_METRICS = [
+  {
+    caption: "Inference Runtime",
+    title: "Ollama Local Daemon",
+    body: "Executes on local hardware. Zero network calls or external cloud dependencies.",
+  },
+  {
+    caption: "Model Weight Architecture",
+    title: "qwen2.5:1.5b (Open-Weight Apache 2.0)",
+    body: "Fast, deterministic instruction-tuned model specialized in structured governance evaluations.",
+  },
+  {
+    caption: "Sampling Temperature",
+    title: "0.1 (Strict Constrained Governance)",
+    body: "Eliminates creative drift to guarantee reproducible, consistent compliance findings.",
+  },
+  {
+    caption: "Output Validation Format",
+    title: "Strict Pydantic JSON Schema",
+    body: "All evaluations are validated through strict schemas with zero hallucinated keys.",
+  },
+];
+
+const CORE_INVARIANTS = [
+  {
+    num: "1",
+    heading: "No Citation, No Blocking Flag",
+    detail: "AI cannot block a marketing deadline without quoting the exact brand guideline clause.",
+  },
+  {
+    num: "2",
+    heading: "Human Authority Primacy",
+    detail: "AI only recommends; human Brand Managers retain sole authority to approve or grant exceptions.",
+  },
+  {
+    num: "3",
+    heading: "Creator Intent Lock",
+    detail: "Suggested edits are minimal surgical diffs that preserve the writer's Call to Action and message.",
+  },
+  {
+    num: "4",
+    heading: "Tamper-Proof Cryptographic Receipts",
+    detail: "Every approved document is signed and anchored in an append-only sequential SHA-256 chain.",
+  },
+];
+
+function sanitizeStream(raw: string): string {
+  return REDACTION_PIPELINE.reduce(
+    (acc, rule) => acc.replace(rule.pattern, rule.mask),
+    raw
   );
+}
 
-  // Live client-side regex simulation matching backend RedactionGateway
-  const simulateRedaction = (text: string) => {
-    let result = text;
-    // Codenames
-    result = result.replace(/\b(Project\s+[A-Z][a-zA-Z0-9]+)\b/g, "[CONFIDENTIAL_PROJECT_REDACTED]");
-    // Pricing
-    result = result.replace(/\$(\d+(?:,\d{3})*)\s*(per|\/)\s*(mo|year)/gi, "[SENSITIVE_PRICING_REDACTED]");
-    // API Tokens
-    result = result.replace(/\b(sk-[a-zA-Z0-9]{20,})\b/g, "[API_KEY_MASKED]");
-    return result;
-  };
+export default function SettingsPage() {
+  const [draftPayload, setDraftPayload] = useState<string>("");
 
-  const redactedResult = simulateRedaction(testRedactText);
+  const quarantinedPayload = useMemo(
+    () => sanitizeStream(draftPayload),
+    [draftPayload]
+  );
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -61,7 +117,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Non-Technical Privacy Promise Card */}
       <div className="p-6 rounded-2xl bg-white border border-[#F1E1D4] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#FFF0E2] flex items-center justify-center text-[#C87539] shrink-0 mt-0.5">
@@ -69,16 +124,15 @@ export default function SettingsPage() {
           </div>
           <div>
             <h2 className="text-sm font-bold text-[#382A20]">
-              The CANON Privacy Guarantee for Non-Technical Teams
+              The FIDELIS Privacy Guarantee for Non-Technical Teams
             </h2>
             <p className="text-xs text-[#8A7567] leading-relaxed mt-0.5">
-              Unlike public consumer AI chatbots, CANON runs completely inside your secure environment using open-weight local models. Unannounced product names, embargoed press releases, and pricing spreadsheets are never transmitted over the internet or used for AI training.
+              Unlike public consumer AI chatbots, FIDELIS runs completely inside your secure environment using open-weight local models. Unannounced product names, embargoed press releases, and pricing spreadsheets are never transmitted over the internet or used for AI training.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Interactive Privacy & Redaction Simulator */}
       <div className="editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[#F1E1D4]">
           <div className="flex items-center gap-2">
@@ -94,15 +148,15 @@ export default function SettingsPage() {
         </div>
 
         <p className="text-xs text-[#8A7567]">
-          Before any draft text reaches AI models, CANON's Redaction Gateway automatically masks sensitive trade secrets. Try editing the input text below to see live redaction in action:
+          Before any draft text reaches AI models, FIDELIS's Redaction Gateway automatically masks sensitive trade secrets. Try editing the input text below to see live redaction in action:
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#382A20]">Draft Copy (Contains Sensitive Info)</label>
             <textarea
-              value={testRedactText}
-              onChange={(e) => setTestRedactText(e.target.value)}
+              value={draftPayload}
+              onChange={(evt) => setDraftPayload(evt.target.value)}
               className="editorial-input w-full h-32 p-3 text-xs leading-relaxed"
               placeholder="Type sensitive text containing codenames or pricing..."
             />
@@ -111,7 +165,13 @@ export default function SettingsPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#027A48]">What the AI Sees (Quarantined & Masked)</label>
             <div className="p-3 rounded-xl bg-[#EDFDF5] border border-[#A6F4C5] h-32 text-xs leading-relaxed text-[#382A20] font-mono overflow-y-auto">
-              {redactedResult}
+              {draftPayload.trim() ? (
+                quarantinedPayload
+              ) : (
+                <span className="text-[#8A7567] italic font-sans">
+                  Real-time masked text will appear here automatically when you enter draft copy...
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -124,7 +184,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Model Disclosure Card */}
       <div className="editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-[#F1E1D4]">
           <div className="flex items-center gap-2">
@@ -137,89 +196,36 @@ export default function SettingsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] space-y-1">
-            <div className="text-[10px] uppercase font-bold text-[#8A7567]">Inference Runtime</div>
-            <div className="text-sm font-bold text-[#382A20]">Ollama Local Daemon</div>
-            <div className="text-[#8A7567] leading-relaxed">
-              Executes on local hardware. Zero network calls or external cloud dependencies.
+          {RUNTIME_METRICS.map((item, idx) => (
+            <div key={idx} className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] space-y-1">
+              <div className="text-[10px] uppercase font-bold text-[#8A7567]">{item.caption}</div>
+              <div className="text-sm font-bold text-[#382A20]">{item.title}</div>
+              <div className="text-[#8A7567] leading-relaxed">{item.body}</div>
             </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] space-y-1">
-            <div className="text-[10px] uppercase font-bold text-[#8A7567]">Model Weight Architecture</div>
-            <div className="text-sm font-bold text-[#382A20]">qwen2.5:1.5b (Open-Weight Apache 2.0)</div>
-            <div className="text-[#8A7567] leading-relaxed">
-              Fast, deterministic instruction-tuned model specialized in structured governance evaluations.
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] space-y-1">
-            <div className="text-[10px] uppercase font-bold text-[#8A7567]">Sampling Temperature</div>
-            <div className="text-sm font-bold text-[#382A20]">0.1 (Strict Constrained Governance)</div>
-            <div className="text-[#8A7567] leading-relaxed">
-              Eliminates creative drift to guarantee reproducible, consistent compliance findings.
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] space-y-1">
-            <div className="text-[10px] uppercase font-bold text-[#8A7567]">Output Validation Format</div>
-            <div className="text-sm font-bold text-[#382A20]">Strict Pydantic JSON Schema</div>
-            <div className="text-[#8A7567] leading-relaxed">
-              All evaluations are validated through strict schemas with zero hallucinated keys.
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Architecture Invariants Matrix */}
       <div className="editorial-card p-6 bg-white border border-[#F1E1D4] shadow-xs space-y-4">
         <div className="flex items-center gap-2 pb-2 border-b border-[#F1E1D4]">
           <ShieldCheck className="w-5 h-5 text-[#027A48]" />
           <h2 className="text-sm font-bold text-[#382A20] uppercase tracking-wider">
-            CANON's Four Non-Negotiable Core Invariants
+            FIDELIS's Four Non-Negotiable Core Invariants
           </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-[#382A20]">
-          <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] flex items-start gap-3">
-            <CheckCircle2 className="w-4 h-4 text-[#027A48] shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-sm block text-[#382A20] mb-0.5">1. No Citation, No Blocking Flag</strong>
-              <p className="text-[#8A7567] leading-relaxed">
-                AI cannot block a marketing deadline without quoting the exact brand guideline clause.
-              </p>
+          {CORE_INVARIANTS.map((invariant) => (
+            <div key={invariant.num} className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] flex items-start gap-3">
+              <CheckCircle2 className="w-4 h-4 text-[#027A48] shrink-0 mt-0.5" />
+              <div>
+                <strong className="text-sm block text-[#382A20] mb-0.5">
+                  {invariant.num}. {invariant.heading}
+                </strong>
+                <p className="text-[#8A7567] leading-relaxed">{invariant.detail}</p>
+              </div>
             </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] flex items-start gap-3">
-            <CheckCircle2 className="w-4 h-4 text-[#027A48] shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-sm block text-[#382A20] mb-0.5">2. Human Authority Primacy</strong>
-              <p className="text-[#8A7567] leading-relaxed">
-                AI only recommends; human Brand Managers retain sole authority to approve or grant exceptions.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] flex items-start gap-3">
-            <CheckCircle2 className="w-4 h-4 text-[#027A48] shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-sm block text-[#382A20] mb-0.5">3. Creator Intent Lock</strong>
-              <p className="text-[#8A7567] leading-relaxed">
-                Suggested edits are minimal surgical diffs that preserve the writer's Call to Action and message.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#F1E1D4] flex items-start gap-3">
-            <CheckCircle2 className="w-4 h-4 text-[#027A48] shrink-0 mt-0.5" />
-            <div>
-              <strong className="text-sm block text-[#382A20] mb-0.5">4. Tamper-Proof Cryptographic Receipts</strong>
-              <p className="text-[#8A7567] leading-relaxed">
-                Every approved document is signed and anchored in an append-only sequential SHA-256 chain.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

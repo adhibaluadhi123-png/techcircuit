@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 
 interface AnimatedGridProps {
   className?: string;
@@ -23,7 +23,6 @@ export function AnimatedGrid({
       className={`pointer-events-none absolute inset-0 overflow-hidden select-none ${className}`}
       aria-hidden="true"
     >
-      {/* 1. Subtle SVG Dot Matrix with Pale Orange Accents */}
       <svg
         className="absolute inset-0 h-full w-full opacity-60"
         xmlns="http://www.w3.org/2000/svg"
@@ -48,7 +47,6 @@ export function AnimatedGrid({
         <rect width="100%" height="100%" fill="url(#pale-orange-center-glow)" />
       </svg>
 
-      {/* 2. Ambient Floating Radial Orbs for depth */}
       <div
         className="absolute -top-32 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-40 animate-pulse-subtle pointer-events-none"
         style={{
@@ -58,13 +56,9 @@ export function AnimatedGrid({
       <div
         className="absolute top-1/3 -right-24 w-[32rem] h-[32rem] rounded-full blur-3xl opacity-30 animate-pulse-subtle pointer-events-none"
         style={{
-          animationDelay: "2s",
-          background: "radial-gradient(circle, rgba(255, 174, 116, 0.3) 0%, rgba(255, 240, 226, 0.1) 60%, transparent 100%)",
+          background: "radial-gradient(circle, rgba(255, 106, 13, 0.18) 0%, rgba(255, 241, 230, 0.04) 70%, transparent 100%)",
         }}
       />
-
-      {/* 3. Subtle bottom fade mask */}
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#FFFBF7] to-transparent pointer-events-none" />
     </div>
   );
 }

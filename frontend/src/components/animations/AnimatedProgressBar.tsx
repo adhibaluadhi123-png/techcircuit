@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
 interface AnimatedProgressBarProps {
-  value: number;     // 0-100
+  value: number;
   max?: number;
   label?: string;
   sublabel?: string;
@@ -11,7 +11,7 @@ interface AnimatedProgressBarProps {
   bgColor?: string;
   height?: number;
   showValue?: boolean;
-  delay?: number;    // ms animation delay
+  delay?: number;
   className?: string;
 }
 
@@ -60,30 +60,25 @@ export function AnimatedProgressBar({
             </div>
           )}
           {showValue && (
-            <span className="text-xs font-black" style={{ color }}>{pct}%</span>
+            <span className="font-mono text-xs font-bold text-[#D95D0D] ml-auto">
+              {pct}%
+            </span>
           )}
         </div>
       )}
       <div
         className="w-full rounded-full overflow-hidden"
-        style={{ height, background: bgColor }}
+        style={{ backgroundColor: bgColor, height }}
       >
         <div
-          className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+          className="h-full rounded-full transition-all duration-700 ease-out"
           style={{
             width: `${width}%`,
-            background: `linear-gradient(90deg, ${color}aa, ${color})`,
+            background: color.startsWith("linear")
+              ? color
+              : `linear-gradient(90deg, ${color}, #FF6A0D)`,
           }}
-        >
-          {/* Shimmer sweep */}
-          <div
-            className="absolute inset-0 animate-shine"
-            style={{
-              background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)",
-              backgroundSize: "200% 100%",
-            }}
-          />
-        </div>
+        />
       </div>
     </div>
   );

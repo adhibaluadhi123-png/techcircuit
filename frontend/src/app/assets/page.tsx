@@ -51,29 +51,29 @@ export default function BrandAssetsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters & Controls
+  
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("ALL");
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
-  // User RBAC State
+  
   const [userRole, setUserRole] = useState("CREATOR");
   const [userName, setUserName] = useState("User");
 
-  // Modals
+  
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showColorModal, setShowColorModal] = useState(false);
   const [activeAsset, setActiveAsset] = useState<BrandAsset | null>(null);
   const [auditResult, setAuditResult] = useState<any | null>(null);
   const [auditingLogo, setAuditingLogo] = useState(false);
 
-  // Notifications
+  
   const [notification, setNotification] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
-  // Upload Form State
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadName, setUploadName] = useState("");
@@ -83,14 +83,14 @@ export default function BrandAssetsPage() {
   const [uploadVersion, setUploadVersion] = useState("1.0.0");
   const [uploading, setUploading] = useState(false);
 
-  // Color Form State
+  
   const [colorName, setColorName] = useState("");
   const [colorHex, setColorHex] = useState("#C87539");
   const [colorRole, setColorRole] = useState("Primary");
   const [colorUsage, setColorUsage] = useState("");
   const [savingColor, setSavingColor] = useState(false);
 
-  // Approval prompt
+  
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectPrompt, setShowRejectPrompt] = useState(false);
 
@@ -133,8 +133,8 @@ export default function BrandAssetsPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedRole = localStorage.getItem("canon_user_role");
-      const storedName = localStorage.getItem("canon_user_name");
+      const storedRole = localStorage.getItem("fidelis_user_role") || localStorage.getItem("canon_user_role");
+      const storedName = localStorage.getItem("fidelis_user_name") || localStorage.getItem("canon_user_name");
       if (storedRole) setUserRole(storedRole);
       if (storedName) setUserName(storedName);
     }
@@ -144,7 +144,7 @@ export default function BrandAssetsPage() {
     loadData();
   }, [selectedCategory, selectedStatus, searchQuery, sortOption]);
 
-  // Handle File Upload
+  
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadName.trim()) {
@@ -187,7 +187,7 @@ export default function BrandAssetsPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Handle Brand Color Submit
+  
   const handleColorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!colorName.trim() || !colorHex.trim()) {
@@ -216,7 +216,7 @@ export default function BrandAssetsPage() {
     }
   };
 
-  // Approval Actions
+  
   const handleDecision = async (decision: "APPROVED" | "REJECTED") => {
     if (!activeAsset) return;
     if (decision === "REJECTED" && !rejectionReason.trim()) {
@@ -262,7 +262,7 @@ export default function BrandAssetsPage() {
     }
   };
 
-  // Archive Action
+  
   const handleArchive = async (assetId: string) => {
     if (!confirm("Are you sure you want to archive this asset? It will be excluded from active brand usage.")) return;
     try {
@@ -275,7 +275,7 @@ export default function BrandAssetsPage() {
     }
   };
 
-  // Delete Action
+  
   const handleDelete = async (assetId: string) => {
     if (!confirm("Permanently delete this brand asset? This cannot be undone.")) return;
     try {
@@ -288,7 +288,7 @@ export default function BrandAssetsPage() {
     }
   };
 
-  // Run Logo Audit
+  
   const handleRunLogoAudit = async (assetId: string) => {
     setAuditingLogo(true);
     try {
@@ -304,7 +304,7 @@ export default function BrandAssetsPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto py-2">
-      {/* Toast Notification */}
+      
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-[#21160F] text-white text-xs font-semibold shadow-2xl flex items-center gap-2 border border-[#FB923C]/30 animate-in fade-in slide-in-from-bottom-2">
           <Check className="w-4 h-4 text-[#F97316] shrink-0" />
@@ -312,7 +312,7 @@ export default function BrandAssetsPage() {
         </div>
       )}
 
-      {/* ── 1. Page Header ── */}
+      
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#F97316] to-[#EA580C] text-white flex items-center justify-center shadow-md shadow-orange-500/20 shrink-0">
@@ -334,7 +334,7 @@ export default function BrandAssetsPage() {
           </div>
         </div>
 
-        {/* Action Buttons & Persona Switcher */}
+        
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-[#F4E2D3] shadow-2xs">
             <UserCheck className="w-4 h-4 text-[#EA580C] shrink-0" />
@@ -347,7 +347,7 @@ export default function BrandAssetsPage() {
                   try {
                     await api.switchPersona(targetRole);
                     setUserRole(targetRole);
-                    const name = localStorage.getItem("canon_user_name") || targetRole;
+                    const name = localStorage.getItem("fidelis_user_name") || localStorage.getItem("canon_user_name") || targetRole;
                     setUserName(name);
                     showToast(`Active persona switched to ${name} (${targetRole})`);
                     loadData();
@@ -358,11 +358,11 @@ export default function BrandAssetsPage() {
                 className="text-xs font-bold text-[#21160F] bg-transparent outline-none cursor-pointer py-0.5"
                 title="Switch active user persona to test RBAC approval workflows"
               >
-                <option value="APPROVER">Arthur Pendelton (Approver)</option>
-                <option value="ADMIN">Marcus Vance (Admin)</option>
-                <option value="BRAND_MANAGER">Elena Rostova (Brand Manager)</option>
-                <option value="AUTHORISED_REVIEWER">Sofia Thorne (Reviewer)</option>
-                <option value="CREATOR">Liam Chen (Creator)</option>
+                <option value="APPROVER">Biju (Executive Approver)</option>
+                <option value="ADMIN">Alfred Biju (Admin)</option>
+                <option value="BRAND_MANAGER">Sebin Sabu (Brand Manager)</option>
+                <option value="AUTHORISED_REVIEWER">Albert Biju (Compliance Reviewer)</option>
+                <option value="CREATOR">Adhithya Biju (Content Creator)</option>
               </select>
             </div>
           </div>
@@ -398,7 +398,7 @@ export default function BrandAssetsPage() {
         </div>
       </div>
 
-      {/* ── 2. Live Database-Backed Overview Cards ── */}
+      
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="editorial-card p-5 bg-white border border-[#F4E2D3] shadow-xs rounded-2xl">
           <div className="flex items-center justify-between text-[#7C6A5E] mb-2">
@@ -445,9 +445,9 @@ export default function BrandAssetsPage() {
         </div>
       </div>
 
-      {/* ── 3. Search, Filter Chips & Category Navigation ── */}
+      
       <div className="space-y-4">
-        {/* Category Filter Pills */}
+        
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           {[
             { id: "ALL", label: "All Assets", icon: Layers },
@@ -483,10 +483,10 @@ export default function BrandAssetsPage() {
           })}
         </div>
 
-        {/* Search, Status, Sorting, and View Mode Bar */}
+        
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl bg-white border border-[#F4E2D3] shadow-xs">
           <div className="flex flex-wrap items-center gap-3 flex-1">
-            {/* Search */}
+            
             <div className="relative flex-1 min-w-[220px]">
               <Search className="w-4 h-4 text-[#7C6A5E] absolute left-3 top-2.5" />
               <input
@@ -498,7 +498,7 @@ export default function BrandAssetsPage() {
               />
             </div>
 
-            {/* Status Filter */}
+            
             <div className="flex items-center gap-1">
               <span className="text-[11px] font-bold text-[#7C6A5E]">Status:</span>
               <select
@@ -514,7 +514,7 @@ export default function BrandAssetsPage() {
               </select>
             </div>
 
-            {/* Sort Order */}
+            
             <div className="flex items-center gap-1">
               <span className="text-[11px] font-bold text-[#7C6A5E]">Sort:</span>
               <select
@@ -531,7 +531,7 @@ export default function BrandAssetsPage() {
             </div>
           </div>
 
-          {/* View Mode Toggle */}
+          
           <div className="flex items-center gap-1 self-end sm:self-auto border border-[#F4E2D3] rounded-xl p-0.5 bg-[#FFFAF5]">
             <button
               onClick={() => setViewMode("grid")}
@@ -555,7 +555,7 @@ export default function BrandAssetsPage() {
         </div>
       </div>
 
-      {/* ── 4. Asset Library (Grid or List View) ── */}
+      
       {loading ? (
         <div className="editorial-card p-16 text-center bg-white border border-[#F4E2D3] rounded-2xl">
           <RefreshCw className="w-7 h-7 animate-spin text-[#EA580C] mx-auto mb-3" />
@@ -574,7 +574,7 @@ export default function BrandAssetsPage() {
           </button>
         </div>
       ) : assets.length === 0 ? (
-        /* ── Pristine Empty State ── */
+        
         <div className="editorial-card p-14 text-center bg-white border-2 border-dashed border-[#F4E2D3] rounded-2xl space-y-4">
           <div className="w-16 h-16 mx-auto rounded-3xl bg-[#FFF1E6] text-[#EA580C] flex items-center justify-center shadow-xs">
             <Palette className="w-8 h-8" />
@@ -607,7 +607,7 @@ export default function BrandAssetsPage() {
           </div>
         </div>
       ) : viewMode === "grid" ? (
-        /* ── Grid View ── */
+        
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {assets.map((asset) => {
             const isApproved = asset.status === "APPROVED";
@@ -623,7 +623,7 @@ export default function BrandAssetsPage() {
                 }}
                 className="editorial-card group bg-white border border-[#F4E2D3] hover:border-[#FB923C] rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
               >
-                {/* Visual Preview Banner */}
+                
                 <div className="relative h-44 bg-[#FFFBF7] border-b border-[#F4E2D3] flex items-center justify-center overflow-hidden p-4">
                   {isColor ? (
                     <div className="w-full h-full rounded-xl flex flex-col items-center justify-center text-white shadow-inner relative group-hover:scale-102 transition-transform" style={{ backgroundColor: asset.metadata_json.hex }}>
@@ -645,7 +645,7 @@ export default function BrandAssetsPage() {
                       alt={asset.name}
                       className="max-h-full max-w-full object-contain transition-transform group-hover:scale-105"
                       onError={(e) => {
-                        // Fallback icon on broken image
+                        
                         e.currentTarget.style.display = "none";
                       }}
                     />
@@ -666,7 +666,7 @@ export default function BrandAssetsPage() {
                     </div>
                   )}
 
-                  {/* Status Pill on thumbnail */}
+                  
                   <div className="absolute top-3 right-3">
                     {isApproved ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5] shadow-xs flex items-center gap-1">
@@ -690,7 +690,7 @@ export default function BrandAssetsPage() {
                     )}
                   </div>
 
-                  {/* Category Pill on thumbnail */}
+                  
                   <div className="absolute top-3 left-3">
                     <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/90 text-[#21160F] border border-[#F4E2D3] shadow-xs backdrop-blur-xs">
                       {asset.category}
@@ -698,7 +698,7 @@ export default function BrandAssetsPage() {
                   </div>
                 </div>
 
-                {/* Card Body */}
+                
                 <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
                   <div>
                     <h3 className="text-sm font-extrabold text-[#21160F] group-hover:text-[#EA580C] transition-colors line-clamp-1">
@@ -741,7 +741,7 @@ export default function BrandAssetsPage() {
           })}
         </div>
       ) : (
-        /* ── List View ── */
+        
         <div className="editorial-card bg-white border border-[#F4E2D3] rounded-2xl overflow-hidden shadow-xs divide-y divide-[#F4E2D3]">
           {assets.map((asset) => {
             const isApproved = asset.status === "APPROVED";
@@ -758,7 +758,7 @@ export default function BrandAssetsPage() {
                 className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#FFFAF5] transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3.5 min-w-0">
-                  {/* Thumbnail / Swatch */}
+                  
                   <div className="w-12 h-12 rounded-xl bg-[#FFFBF7] border border-[#F4E2D3] flex items-center justify-center shrink-0 overflow-hidden">
                     {isColor ? (
                       <div className="w-full h-full" style={{ backgroundColor: asset.metadata_json.hex }} />
@@ -782,7 +782,7 @@ export default function BrandAssetsPage() {
                   </div>
                 </div>
 
-                {/* Right Metadata & Actions */}
+                
                 <div className="flex items-center gap-4 shrink-0 text-xs text-[#7C6A5E]">
                   <span className="font-mono">{asset.file_format || "SPEC"}</span>
                   <span className="hidden sm:inline">v{asset.version}</span>
@@ -825,7 +825,7 @@ export default function BrandAssetsPage() {
         </div>
       )}
 
-      {/* ── 5. Upload Asset Modal ── */}
+      
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="editorial-card w-full max-w-lg p-6 bg-white shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto space-y-4 animate-in fade-in zoom-in-95 duration-200">
@@ -846,7 +846,7 @@ export default function BrandAssetsPage() {
             </div>
 
             <form onSubmit={handleUploadSubmit} className="space-y-3.5">
-              {/* File Dropzone inside Modal */}
+              
               <div>
                 <label className="text-xs font-bold text-[#21160F] block mb-1">
                   Select File (.png, .svg, .jpg, .webp, .pdf, .ttf, .woff2)
@@ -890,7 +890,7 @@ export default function BrandAssetsPage() {
                 </div>
               </div>
 
-              {/* Asset Name */}
+              
               <div>
                 <label className="text-xs font-bold text-[#21160F]">Asset Name</label>
                 <input
@@ -903,7 +903,7 @@ export default function BrandAssetsPage() {
                 />
               </div>
 
-              {/* Category & Version */}
+              
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-[#21160F]">Category</label>
@@ -931,7 +931,7 @@ export default function BrandAssetsPage() {
                 </div>
               </div>
 
-              {/* Description */}
+              
               <div>
                 <label className="text-xs font-bold text-[#21160F]">Description &amp; Context</label>
                 <textarea
@@ -942,7 +942,7 @@ export default function BrandAssetsPage() {
                 />
               </div>
 
-              {/* Intended Usage */}
+              
               <div>
                 <label className="text-xs font-bold text-[#21160F]">Intended Usage Guidance</label>
                 <input
@@ -954,7 +954,7 @@ export default function BrandAssetsPage() {
                 />
               </div>
 
-              {/* Submit Buttons */}
+              
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#F4E2D3]">
                 <button
                   type="button"
@@ -976,7 +976,7 @@ export default function BrandAssetsPage() {
         </div>
       )}
 
-      {/* ── 6. Add Brand Color Modal (With Live WCAG Calculator) ── */}
+      
       {showColorModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="editorial-card w-full max-w-md p-6 bg-white shadow-2xl rounded-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
@@ -997,13 +997,13 @@ export default function BrandAssetsPage() {
             </div>
 
             <form onSubmit={handleColorSubmit} className="space-y-3.5">
-              {/* Color Swatch Preview */}
+              
               <div className="p-4 rounded-xl text-center text-white font-mono font-bold shadow-inner flex flex-col items-center justify-center gap-1 transition-colors" style={{ backgroundColor: colorHex }}>
                 <span className="text-lg drop-shadow">{colorHex.toUpperCase()}</span>
                 <span className="text-xs opacity-90 drop-shadow">{colorRole} Role</span>
               </div>
 
-              {/* Name & Hex Input */}
+              
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-[#21160F]">Color Name</label>
@@ -1036,7 +1036,7 @@ export default function BrandAssetsPage() {
                 </div>
               </div>
 
-              {/* Role */}
+              
               <div>
                 <label className="text-xs font-bold text-[#21160F]">Semantic Role</label>
                 <select
@@ -1052,7 +1052,7 @@ export default function BrandAssetsPage() {
                 </select>
               </div>
 
-              {/* Usage Guidance */}
+              
               <div>
                 <label className="text-xs font-bold text-[#21160F]">Usage Guidance</label>
                 <input
@@ -1064,7 +1064,7 @@ export default function BrandAssetsPage() {
                 />
               </div>
 
-              {/* Buttons */}
+              
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#F4E2D3]">
                 <button
                   type="button"
@@ -1086,11 +1086,11 @@ export default function BrandAssetsPage() {
         </div>
       )}
 
-      {/* ── 7. Asset Details & Preview Drawer/Modal ── */}
+      
       {activeAsset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
           <div className="editorial-card w-full max-w-2xl p-6 bg-white shadow-2xl rounded-2xl max-h-[92vh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            {/* Modal Header */}
+            
             <div className="flex items-start justify-between border-b border-[#F4E2D3] pb-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -1124,7 +1124,7 @@ export default function BrandAssetsPage() {
               </button>
             </div>
 
-            {/* Large Visual Preview */}
+            
             <div className="rounded-2xl border border-[#F4E2D3] p-6 bg-[#FFFBF7] flex items-center justify-center min-h-[220px]">
               {activeAsset.category === "COLORS" && activeAsset.metadata_json?.hex ? (
                 <div className="w-full max-w-sm p-6 rounded-2xl text-white shadow-lg space-y-2 text-center" style={{ backgroundColor: activeAsset.metadata_json.hex }}>
@@ -1181,7 +1181,7 @@ export default function BrandAssetsPage() {
               )}
             </div>
 
-            {/* Audit Results (if evaluated) */}
+            
             {auditResult && (
               <div className={`p-4 rounded-xl border ${auditResult.is_compliant ? "bg-emerald-50 border-emerald-200 text-emerald-900" : "bg-amber-50 border-amber-200 text-amber-900"} space-y-2`}>
                 <div className="flex items-center gap-2 font-bold text-xs">
@@ -1197,7 +1197,7 @@ export default function BrandAssetsPage() {
               </div>
             )}
 
-            {/* Metadata Grid */}
+            
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-[#FFFAF5] p-4 rounded-xl border border-[#F4E2D3]">
               <div>
                 <span className="text-[#7C6A5E] block">Format &amp; Size</span>
@@ -1230,7 +1230,7 @@ export default function BrandAssetsPage() {
               )}
             </div>
 
-            {/* Prompt for Rejection Reason */}
+            
             {showRejectPrompt && (
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-2 animate-in fade-in">
                 <label className="text-xs font-bold text-rose-900">
@@ -1262,7 +1262,7 @@ export default function BrandAssetsPage() {
               </div>
             )}
 
-            {/* Official Compliance Certificate for Approved Assets */}
+            
             {activeAsset.status === "APPROVED" && (
               <div className="p-4 rounded-2xl bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7] border border-[#86EFAC] space-y-2 shadow-xs">
                 <div className="flex items-center justify-between">
@@ -1279,7 +1279,7 @@ export default function BrandAssetsPage() {
                 <div className="text-[11px] text-[#054E29] grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-[#A6F4C5]/60">
                   <div>
                     <span className="text-[#027A48] opacity-80 block text-[10px] font-bold uppercase">Certified Approver:</span>
-                    <strong className="text-[#054E29]">{activeAsset.approved_by_name || "Arthur Pendelton (Authorized Approver)"}</strong>
+                    <strong className="text-[#054E29]">{activeAsset.approved_by_name || "Biju (Executive Approver)"}</strong>
                   </div>
                   <div>
                     <span className="text-[#027A48] opacity-80 block text-[10px] font-bold uppercase">Timestamp:</span>
@@ -1299,7 +1299,7 @@ export default function BrandAssetsPage() {
               </div>
             )}
 
-            {/* Notice for Unprivileged Users Viewing Pending Assets */}
+            
             {!canApprove && activeAsset.status === "PENDING_APPROVAL" && (
               <div className="p-3.5 rounded-xl bg-[#FFF9F3] border border-[#FDBA74] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
                 <div className="flex items-center gap-2.5">
@@ -1317,8 +1317,8 @@ export default function BrandAssetsPage() {
                     try {
                       await api.switchPersona("APPROVER");
                       setUserRole("APPROVER");
-                      setUserName("Arthur Pendelton");
-                      showToast("Switched to Arthur Pendelton (Authorized Approver)!");
+                      setUserName("Biju");
+                      showToast("Switched to Biju (Executive Approver)!");
                       loadData();
                     } catch (err: any) {
                       showToast(`Could not switch role: ${err.message}`);
@@ -1331,7 +1331,7 @@ export default function BrandAssetsPage() {
               </div>
             )}
 
-            {/* Actions Footer */}
+            
             <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#F4E2D3]">
               <div className="flex items-center gap-2">
                 {activeAsset.file_path && (
@@ -1356,7 +1356,7 @@ export default function BrandAssetsPage() {
                 )}
               </div>
 
-              {/* Approval Buttons for Authorized Users */}
+              
               <div className="flex items-center gap-2">
                 {canApprove && activeAsset.status !== "APPROVED" && (
                   <button

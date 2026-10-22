@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
   FileCheck2,
@@ -20,164 +20,164 @@ import {
 } from "lucide-react";
 import { api, ReviewResult } from "@/lib/api";
 
-export default function ReviewStudioPage() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [title, setTitle] = useState("");
-  const [contentText, setContentText] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [showManualText, setShowManualText] = useState(false);
+function resolveClaimBadge(status: string) {
+  switch (status) {
+    case "SUPPORTED":
+      return {
+        badgeClass: "bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]",
+        label: "✓ Verified",
+      };
+    case "STALE":
+      return {
+        badgeClass: "bg-[#FFF5EC] text-[#D95D0D] border border-[#FDBA74]",
+        label: "⚠️ Outdated / Expired",
+      };
+    default:
+      return {
+        badgeClass: "bg-[#FFF0F0] text-[#B42318] border border-[#FECDCA]",
+        label: "❌ Needs Verification",
+      };
+  }
+}
 
-  const [reviewing, setReviewing] = useState(false);
-  const [reviewResult, setReviewResult] = useState<ReviewResult | null>(null);
-  const [activeStep, setActiveStep] = useState<string>("");
-  const [stepPercent, setStepPercent] = useState<number>(0);
-  const [submitterName, setSubmitterName] = useState("Creator");
-  const [submitterRole, setSubmitterRole] = useState("CREATOR");
-  const [approvedState, setApprovedState] = useState(false);
-  const [approving, setApproving] = useState(false);
-  const [appliedFixes, setAppliedFixes] = useState<Record<string, boolean>>({});
+export default function ReviewStudioPage() {
+  const fileSelectorRef = useRef<HTMLInputElement>(null);
+  const [documentTitle, setDocumentTitle] = useState("");
+  const [editorialText, setEditorialText] = useState("");
+  const [activeUploadFile, setActiveUploadFile] = useState<File | null>(null);
+  const [dragHover, setDragHover] = useState(false);
+  const [revealTextInput, setRevealTextInput] = useState(false);
+
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationPayload, setEvaluationPayload] = useState<ReviewResult | null>(null);
+  const [stepCaption, setStepCaption] = useState<string>("");
+  const [completionRatio, setCompletionRatio] = useState<number>(0);
+  const [authorName, setAuthorName] = useState("Creator");
+  const [authorPrivilege, setAuthorPrivilege] = useState("CREATOR");
+  const [isSignOffComplete, setIsSignOffComplete] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
+  const [remediatedItems, setRemediatedItems] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedName = localStorage.getItem("canon_user_name");
-      const storedRole = localStorage.getItem("canon_user_role");
-      if (storedName) setSubmitterName(storedName);
-      if (storedRole) setSubmitterRole(storedRole);
+      const storedName = localStorage.getItem("fidelis_user_name") || localStorage.getItem("canon_user_name");
+      const storedRole = localStorage.getItem("fidelis_user_role") || localStorage.getItem("canon_user_role");
+      if (storedName) setAuthorName(storedName);
+      if (storedRole) setAuthorPrivilege(storedRole);
 
-      // Check if there was a saved last review
-      const lastReview = localStorage.getItem("canon_last_review");
-      if (lastReview) {
+      const cachedReview = localStorage.getItem("fidelis_last_review") || localStorage.getItem("canon_last_review");
+      if (cachedReview) {
         try {
-          setReviewResult(JSON.parse(lastReview));
-        } catch {}
+          setEvaluationPayload(JSON.parse(cachedReview));
+        } catch {
+        }
       }
     }
   }, []);
 
-  const handleFileChange = (file: File) => {
-    setSelectedFile(file);
-    if (!title) {
-      // Auto-set title from filename (strip extension)
-      const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
-      setTitle(cleanName);
+  const onFileSelect = (selected: File) => {
+    setActiveUploadFile(selected);
+    if (!documentTitle) {
+      const derived = selected.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+      setDocumentTitle(derived);
     }
-    setReviewResult(null);
-    setApprovedState(false);
-    setAppliedFixes({});
+    setEvaluationPayload(null);
+    setIsSignOffComplete(false);
+    setRemediatedItems({});
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
+  const resetReviewWorkspace = () => {
+    setActiveUploadFile(null);
+    setDocumentTitle("");
+    setEditorialText("");
+    setEvaluationPayload(null);
+    setIsSignOffComplete(false);
+    setRemediatedItems({});
+    if (fileSelectorRef.current) fileSelectorRef.current.value = "";
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
+  const dispatchReviewAudit = async () => {
+    if (!activeUploadFile && !editorialText.trim()) return;
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileChange(e.dataTransfer.files[0]);
-    }
-  };
+    setIsEvaluating(true);
+    setCompletionRatio(20);
+    setStepCaption("1. Scanning document & checking for confidential secrets...");
 
-  const handleClear = () => {
-    setSelectedFile(null);
-    setTitle("");
-    setContentText("");
-    setReviewResult(null);
-    setApprovedState(false);
-    setAppliedFixes({});
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+    const payload = new FormData();
+    payload.append("title", documentTitle || activeUploadFile?.name || "Marketing Document");
 
-  const handleRunReview = async () => {
-    if (!selectedFile && !contentText.trim()) return;
-
-    setReviewing(true);
-    setStepPercent(20);
-    setActiveStep("1. Scanning document & checking for confidential secrets...");
-
-    const formData = new FormData();
-    formData.append("title", title || selectedFile?.name || "Marketing Document");
-
-    if (selectedFile) {
-      formData.append("file", selectedFile);
+    if (activeUploadFile) {
+      payload.append("file", activeUploadFile);
     } else {
-      formData.append("content_text", contentText);
+      payload.append("content_text", editorialText);
     }
 
-    const storedUserId = typeof window !== "undefined" ? localStorage.getItem("canon_user_id") : null;
-    if (storedUserId) {
-      formData.append("creator_id", storedUserId);
+    const currentUserId = typeof window !== "undefined"
+      ? (localStorage.getItem("fidelis_user_id") || localStorage.getItem("canon_user_id"))
+      : null;
+    if (currentUserId) {
+      payload.append("creator_id", currentUserId);
     }
 
     try {
       setTimeout(() => {
-        setStepPercent(45);
-        setActiveStep("2. Evaluating against active company brand guidelines...");
+        setCompletionRatio(45);
+        setStepCaption("2. Evaluating against active company brand guidelines...");
       }, 350);
 
       setTimeout(() => {
-        setStepPercent(70);
-        setActiveStep("3. Cross-referencing statistics & claims against Verified Fact Vault...");
+        setCompletionRatio(70);
+        setStepCaption("3. Cross-referencing statistics & claims against Verified Fact Vault...");
       }, 750);
 
       setTimeout(() => {
-        setStepPercent(90);
-        setActiveStep("4. Generating 1-click surgical fixes and diffs...");
+        setCompletionRatio(90);
+        setStepCaption("4. Generating 1-click surgical fixes and diffs...");
       }, 1150);
 
-      const result = await api.submitReview(formData);
-      setStepPercent(100);
-      setReviewResult(result);
-      setApprovedState(false);
-      setAppliedFixes({});
+      const outcome = await api.submitReview(payload);
+      setCompletionRatio(100);
+      setEvaluationPayload(outcome);
+      setIsSignOffComplete(false);
+      setRemediatedItems({});
       if (typeof window !== "undefined") {
-        localStorage.setItem("canon_last_review", JSON.stringify(result));
+        localStorage.setItem("fidelis_last_review", JSON.stringify(outcome));
+        localStorage.setItem("canon_last_review", JSON.stringify(outcome));
       }
     } catch (err: any) {
-      console.error("Review submission failed:", err);
       alert(`Review check failed: ${err.message || "An error occurred while analyzing the document."}`);
     } finally {
-      setReviewing(false);
-      setActiveStep("");
+      setIsEvaluating(false);
+      setStepCaption("");
     }
   };
 
-  const handleApplyFix = async (findingId: string) => {
+  const applySingleSurgicalPatch = async (findingKey: string) => {
     try {
-      await api.updateFindingDecision(findingId, "ACCEPT_DIFF", "Accepted 1-click recommended fix.");
-      setAppliedFixes((prev) => ({ ...prev, [findingId]: true }));
-    } catch (err) {
-      // Still update UI state for seamless experience
-      setAppliedFixes((prev) => ({ ...prev, [findingId]: true }));
-    }
-  };
-
-  const handleApproveDocument = async () => {
-    if (!reviewResult) return;
-    setApproving(true);
-    try {
-      if (reviewResult.submission_id) {
-        await api.submitApprovalDecision(reviewResult.submission_id, "APPROVED", "Approved after review");
-      }
-      setApprovedState(true);
-    } catch (err) {
-      // Fallback mark as approved
-      setApprovedState(true);
+      await api.updateFindingDecision(findingKey, "ACCEPT_DIFF", "Accepted 1-click recommended fix.");
+    } catch {
     } finally {
-      setApproving(false);
+      setRemediatedItems((prev) => ({ ...prev, [findingKey]: true }));
+    }
+  };
+
+  const commitDocumentSignOff = async () => {
+    if (!evaluationPayload) return;
+    setIsSigning(true);
+    try {
+      if (evaluationPayload.submission_id) {
+        await api.submitApprovalDecision(evaluationPayload.submission_id, "APPROVED", "Approved after review");
+      }
+      setIsSignOffComplete(true);
+    } catch {
+      setIsSignOffComplete(true);
+    } finally {
+      setIsSigning(false);
     }
   };
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto py-2">
-      {/* ── 1. Page Header ── */}
       <div className="p-6 rounded-2xl bg-white border border-[#F1E1D4] shadow-xs flex flex-col sm:flex-row items-center gap-5">
         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF8A3D] to-[#FF721B] text-white flex items-center justify-center shadow-xs shrink-0">
           <FileCheck2 className="w-6 h-6" />
@@ -188,7 +188,7 @@ export default function ReviewStudioPage() {
               Document Audit
             </span>
             <span className="text-xs text-[#8A7567]">
-              User: <strong className="text-[#201815]">{submitterName}</strong> ({submitterRole.replace("_", " ")})
+              User: <strong className="text-[#201815]">{authorName}</strong> ({authorPrivilege.replace("_", " ")})
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#201815]">
@@ -198,6 +198,7 @@ export default function ReviewStudioPage() {
             Upload your marketing PDF, brochure, or press release. CANON automatically checks words, trademarks, stats, and logos, and displays the results right below.
           </p>
         </div>
+
         <Link
           href="/guide"
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-[#FFF5EC] text-[#201815] text-xs font-bold border border-[#F1E1D4] transition-all shadow-xs shrink-0"
@@ -207,7 +208,6 @@ export default function ReviewStudioPage() {
         </Link>
       </div>
 
-      {/* ── 2. Primary PDF Upload Area ── */}
       <div className="editorial-card p-6 sm:p-8 bg-white border border-[#F1E1D4] space-y-6 shadow-xs">
         <div>
           <label className="text-xs font-bold text-[#201815] uppercase tracking-wider block mb-1.5">
@@ -215,36 +215,47 @@ export default function ReviewStudioPage() {
           </label>
           <input
             type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={documentTitle}
+            onChange={(e) => setDocumentTitle(e.target.value)}
             placeholder="e.g. Q4 Launch Brochure or Social Campaign"
             className="editorial-input w-full p-3 text-sm font-semibold"
           />
         </div>
 
-        {/* Drag & Drop PDF Dropzone */}
         <div>
           <input
-            ref={fileInputRef}
+            ref={fileSelectorRef}
             type="file"
             accept=".pdf,.docx,.txt,.png,.jpg,.jpeg"
             onChange={(e) => {
               if (e.target.files && e.target.files.length > 0) {
-                handleFileChange(e.target.files[0]);
+                onFileSelect(e.target.files[0]);
               }
             }}
             className="hidden"
             id="pdf-upload-input"
           />
 
-          {!selectedFile ? (
+          {!activeUploadFile ? (
             <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragHover(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                setDragHover(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragHover(false);
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                  onFileSelect(e.dataTransfer.files[0]);
+                }
+              }}
+              onClick={() => fileSelectorRef.current?.click()}
               className={`p-10 rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-3 ${
-                isDragging
+                dragHover
                   ? "border-[#FF8A3D] bg-[#FFF5EC]"
                   : "border-[#F4E2D3] bg-[#FFFBF7] hover:border-[#FF8A3D] hover:bg-[#FFF9F3]"
               }`}
@@ -275,20 +286,20 @@ export default function ReviewStudioPage() {
                 </div>
                 <div>
                   <div className="text-sm font-extrabold text-[#201815] flex items-center gap-2">
-                    <span>{selectedFile.name}</span>
+                    <span>{activeUploadFile.name}</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#027A48] border border-[#A6F4C5]">
                       READY TO REVIEW
                     </span>
                   </div>
                   <div className="text-xs text-[#7C6A5E] mt-0.5">
-                    {(selectedFile.size / 1024).toFixed(1)} KB · File uploaded successfully
+                    {(activeUploadFile.size / 1024).toFixed(1)} KB · File uploaded successfully
                   </div>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={handleClear}
+                onClick={resetReviewWorkspace}
                 className="p-2 rounded-xl text-[#7C6A5E] hover:text-[#B42318] hover:bg-white transition-all cursor-pointer"
                 title="Remove file"
               >
@@ -298,22 +309,21 @@ export default function ReviewStudioPage() {
           )}
         </div>
 
-        {/* Collapsible: Paste manual text */}
         <div className="pt-1">
           <button
             type="button"
-            onClick={() => setShowManualText(!showManualText)}
+            onClick={() => setRevealTextInput(!revealTextInput)}
             className="text-xs font-bold text-[#D95D0D] hover:underline flex items-center gap-1 cursor-pointer"
           >
-            <span>{showManualText ? "Hide direct text box" : "+ Need to paste text directly instead of uploading a PDF?"}</span>
-            {showManualText ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <span>{revealTextInput ? "Hide direct text box" : "+ Need to paste text directly instead of uploading a PDF?"}</span>
+            {revealTextInput ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
-          {showManualText && (
+          {revealTextInput && (
             <div className="mt-3 space-y-2">
               <textarea
-                value={contentText}
-                onChange={(e) => setContentText(e.target.value)}
+                value={editorialText}
+                onChange={(e) => setEditorialText(e.target.value)}
                 placeholder="Paste marketing copy, ad copy, or announcement text here..."
                 className="editorial-input w-full h-32 p-3 text-xs leading-relaxed"
               />
@@ -321,21 +331,20 @@ export default function ReviewStudioPage() {
           )}
         </div>
 
-        {/* Review Action & Progress Bar */}
         <div className="pt-2 border-t border-[#F4E2D3] space-y-4">
-          {reviewing && (
+          {isEvaluating && (
             <div className="p-4 rounded-xl bg-[#FFF9F3] border border-[#FDBA74] space-y-2 animate-in fade-in">
               <div className="flex items-center justify-between text-xs font-bold text-[#201815]">
                 <span className="flex items-center gap-2">
                   <RefreshCw className="w-3.5 h-3.5 text-[#FF8A3D] animate-spin" />
-                  <span>{activeStep}</span>
+                  <span>{stepCaption}</span>
                 </span>
-                <span className="text-[#D95D0D] font-extrabold">{stepPercent}%</span>
+                <span className="text-[#D95D0D] font-extrabold">{completionRatio}%</span>
               </div>
               <div className="w-full h-2 rounded-full bg-[#F4E2D3] overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-[#FF8A3D] to-[#FF5F0F] transition-all duration-300"
-                  style={{ width: `${stepPercent}%` }}
+                  style={{ width: `${completionRatio}%` }}
                 />
               </div>
             </div>
@@ -349,24 +358,22 @@ export default function ReviewStudioPage() {
 
             <button
               type="button"
-              onClick={handleRunReview}
-              disabled={reviewing || (!selectedFile && !contentText.trim())}
+              onClick={dispatchReviewAudit}
+              disabled={isEvaluating || (!activeUploadFile && !editorialText.trim())}
               className="px-7 py-3 rounded-xl bg-gradient-to-r from-[#FF8A3D] to-[#FF721B] hover:from-[#FF9952] hover:to-[#E8630D] text-white text-sm font-extrabold shadow-md shadow-[#FF8A3D]/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
             >
               <Sparkles className="w-4 h-4" />
-              <span>{reviewing ? "Reviewing PDF..." : "Review Document (PDF)"}</span>
+              <span>{isEvaluating ? "Reviewing PDF..." : "Review Document (PDF)"}</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── 3. Comprehensive Results Displayed Directly Down Below ── */}
-      {reviewResult && (
+      {evaluationPayload && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Main Status Header Card */}
           <div
             className={`p-6 rounded-3xl border bg-white shadow-md ${
-              reviewResult.blocking_findings_count > 0
+              evaluationPayload.blocking_findings_count > 0
                 ? "border-[#FECDCA] border-l-8 border-l-[#B42318]"
                 : "border-[#A6F4C5] border-l-8 border-l-[#027A48]"
             }`}
@@ -377,10 +384,10 @@ export default function ReviewStudioPage() {
                   Audit Analysis Complete
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-[#201815] mt-1">
-                  {reviewResult.blocking_findings_count > 0 ? (
+                  {evaluationPayload.blocking_findings_count > 0 ? (
                     <span className="text-[#B42318] flex items-center gap-2">
                       <AlertTriangle className="w-6 h-6 shrink-0" />
-                      <span>{reviewResult.blocking_findings_count} Issue(s) Require Correction</span>
+                      <span>{evaluationPayload.blocking_findings_count} Issue(s) Require Correction</span>
                     </span>
                   ) : (
                     <span className="text-[#027A48] flex items-center gap-2">
@@ -390,13 +397,12 @@ export default function ReviewStudioPage() {
                   )}
                 </h2>
                 <p className="text-xs text-[#7C6A5E] mt-1">
-                  Document: <strong>{reviewResult.title || selectedFile?.name || "Submitted Copy"}</strong>
+                  Document: <strong>{evaluationPayload.title || activeUploadFile?.name || "Submitted Copy"}</strong>
                 </p>
               </div>
 
-              {/* One-Click Approval Sign-off Action */}
               <div className="flex items-center gap-3">
-                {approvedState ? (
+                {isSignOffComplete ? (
                   <span className="px-4 py-2.5 rounded-xl bg-[#EDFDF5] border border-[#A6F4C5] text-[#027A48] text-xs font-black flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Approved &amp; Signed Off</span>
@@ -404,37 +410,36 @@ export default function ReviewStudioPage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={handleApproveDocument}
-                    disabled={approving}
+                    onClick={commitDocumentSignOff}
+                    disabled={isSigning}
                     className="px-5 py-2.5 rounded-xl bg-[#027A48] hover:bg-[#02663c] text-white text-xs font-black transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:shadow-md disabled:opacity-50"
                   >
                     <ThumbsUp className="w-4 h-4" />
-                    <span>{approving ? "Signing off..." : "Approve & Sign Off"}</span>
+                    <span>{isSigning ? "Signing off..." : "Approve & Sign Off"}</span>
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Quick Metrics Badges */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 text-xs">
               <div className="p-3 rounded-xl bg-[#FFF9F3] border border-[#F4E2D3]">
                 <span className="text-[10px] font-bold text-[#7C6A5E] uppercase block">Violations</span>
                 <span className="text-xl font-black text-[#B42318] block mt-0.5">
-                  {reviewResult.blocking_findings_count} Blocking
+                  {evaluationPayload.blocking_findings_count} Blocking
                 </span>
               </div>
 
               <div className="p-3 rounded-xl bg-[#FFF9F3] border border-[#F4E2D3]">
                 <span className="text-[10px] font-bold text-[#7C6A5E] uppercase block">Advisory Notes</span>
                 <span className="text-xl font-black text-[#D95D0D] block mt-0.5">
-                  {reviewResult.advisory_findings_count} Suggestions
+                  {evaluationPayload.advisory_findings_count} Suggestions
                 </span>
               </div>
 
               <div className="p-3 rounded-xl bg-[#FFF9F3] border border-[#F4E2D3]">
                 <span className="text-[10px] font-bold text-[#7C6A5E] uppercase block">Fact Claims</span>
                 <span className="text-xl font-black text-[#027A48] block mt-0.5">
-                  {reviewResult.claims.length} Extracted
+                  {evaluationPayload.claims.length} Extracted
                 </span>
               </div>
 
@@ -448,12 +453,11 @@ export default function ReviewStudioPage() {
             </div>
           </div>
 
-          {/* ── Detailed Findings with 1-Click Fix Buttons ── */}
-          {reviewResult.findings && reviewResult.findings.length > 0 && (
+          {evaluationPayload.findings && evaluationPayload.findings.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-extrabold text-[#201815] flex items-center gap-2">
-                  <span>Detected Issues &amp; Recommended Fixes ({reviewResult.findings.length})</span>
+                  <span>Detected Issues &amp; Recommended Fixes ({evaluationPayload.findings.length})</span>
                 </h3>
                 <span className="text-xs text-[#7C6A5E]">
                   Click &ldquo;Apply Fix&rdquo; on any item to automatically correct it
@@ -461,8 +465,8 @@ export default function ReviewStudioPage() {
               </div>
 
               <div className="space-y-3">
-                {reviewResult.findings.map((f, idx) => {
-                  const isFixed = appliedFixes[f.id];
+                {evaluationPayload.findings.map((f, idx) => {
+                  const isFixed = remediatedItems[f.id];
                   const isBlocking = f.severity === "BLOCKING";
 
                   return (
@@ -490,7 +494,6 @@ export default function ReviewStudioPage() {
                           </span>
                         </div>
 
-                        {/* Apply Fix Action */}
                         <div>
                           {isFixed ? (
                             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#EDFDF5] text-[#027A48] text-xs font-black border border-[#A6F4C5]">
@@ -500,7 +503,7 @@ export default function ReviewStudioPage() {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => handleApplyFix(f.id)}
+                              onClick={() => applySingleSurgicalPatch(f.id)}
                               className="px-3 py-1 rounded-lg bg-[#FFF2E7] hover:bg-[#FFEAD9] text-[#D95D0D] text-xs font-extrabold border border-[#FDBA74] transition-all cursor-pointer flex items-center gap-1.5"
                             >
                               <Sparkles className="w-3.5 h-3.5" />
@@ -513,7 +516,6 @@ export default function ReviewStudioPage() {
                       <div className="space-y-2 text-xs">
                         <p className="font-bold text-[#201815]">{f.description}</p>
 
-                        {/* Exact Citation from Brand Book */}
                         {f.policy_citation && (
                           <div className="p-2.5 rounded-xl bg-[#FFFBF7] border border-[#F4E2D3] text-[#7C6A5E] text-[11px] leading-relaxed">
                             <strong className="text-[#201815]">Guideline Rule: </strong>
@@ -521,7 +523,6 @@ export default function ReviewStudioPage() {
                           </div>
                         )}
 
-                        {/* Suggested Replacement */}
                         {f.suggested_replacement && (
                           <div className="flex items-center gap-2 text-xs text-[#027A48] font-bold">
                             <span>Recommended Replacement:</span>
@@ -538,8 +539,7 @@ export default function ReviewStudioPage() {
             </div>
           )}
 
-          {/* ── Fact Claims Verification Table ── */}
-          {reviewResult.claims && reviewResult.claims.length > 0 && (
+          {evaluationPayload.claims && evaluationPayload.claims.length > 0 && (
             <div className="p-6 rounded-3xl bg-white border border-[#F4E2D3] shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -553,39 +553,29 @@ export default function ReviewStudioPage() {
               </div>
 
               <div className="divide-y divide-[#F4E2D3] border-t border-[#F4E2D3]">
-                {reviewResult.claims.map((claim, idx) => (
-                  <div key={idx} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                    <div>
-                      <span className="font-extrabold text-[#201815]">&ldquo;{claim.claim_text}&rdquo;</span>
-                      {claim.matched_fact_subject && (
-                        <div className="text-[11px] text-[#7C6A5E] mt-0.5">
-                          Matched Topic: {claim.matched_fact_subject}
-                        </div>
-                      )}
+                {evaluationPayload.claims.map((claim, idx) => {
+                  const visual = resolveClaimBadge(claim.status);
+                  return (
+                    <div key={idx} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div>
+                        <span className="font-extrabold text-[#201815]">&ldquo;{claim.claim_text}&rdquo;</span>
+                        {claim.matched_fact_subject && (
+                          <div className="text-[11px] text-[#7C6A5E] mt-0.5">
+                            Matched Topic: {claim.matched_fact_subject}
+                          </div>
+                        )}
+                      </div>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase shrink-0 ${visual.badgeClass}`}>
+                        {visual.label}
+                      </span>
                     </div>
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase shrink-0 ${
-                        claim.status === "SUPPORTED"
-                          ? "bg-[#EDFDF5] text-[#027A48] border border-[#A6F4C5]"
-                          : claim.status === "STALE"
-                          ? "bg-[#FFF5EC] text-[#D95D0D] border border-[#FDBA74]"
-                          : "bg-[#FFF0F0] text-[#B42318] border border-[#FECDCA]"
-                      }`}
-                    >
-                      {claim.status === "SUPPORTED"
-                        ? "✓ Verified"
-                        : claim.status === "STALE"
-                        ? "⚠️ Outdated / Expired"
-                        : "❌ Needs Verification"}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* ── Tracked Changes / Clean Diff Preview ── */}
-          {reviewResult.diff_html && (
+          {evaluationPayload.diff_html && (
             <div className="p-6 rounded-3xl bg-white border border-[#F4E2D3] shadow-xs space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -602,7 +592,7 @@ export default function ReviewStudioPage() {
               </div>
               <div
                 className="p-4 rounded-2xl bg-[#FFFBF7] border border-[#F4E2D3] text-xs leading-relaxed text-[#201815] font-sans"
-                dangerouslySetInnerHTML={{ __html: reviewResult.diff_html }}
+                dangerouslySetInnerHTML={{ __html: evaluationPayload.diff_html }}
               />
             </div>
           )}

@@ -1,12 +1,6 @@
-"""Pydantic Domain Schemas for CANON Brand Governance Platform."""
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-
-
-# ==========================================
-# Auth & User Schemas
-# ==========================================
 
 class Token(BaseModel):
     access_token: str
@@ -17,17 +11,14 @@ class Token(BaseModel):
     role: str
     workspace_id: str
 
-
 class UserBase(BaseModel):
     email: str
     full_name: str
-    role: str = "CREATOR"  # ADMIN, BRAND_MANAGER, CREATOR, AUTHORISED_REVIEWER, APPROVER
-
+    role: str = 'CREATOR'
 
 class UserCreate(UserBase):
     password: str
     workspace_id: Optional[str] = None
-
 
 class UserResponse(UserBase):
     id: str
@@ -38,21 +29,14 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
-
 class LoginRequest(BaseModel):
     email: str
     password: str
 
-
-# ==========================================
-# Rulebook & Rule Schemas
-# ==========================================
-
 class RuleTestCaseBase(BaseModel):
     input_text: str
-    expected_verdict: str  # PASS, FAIL
+    expected_verdict: str
     explanation: Optional[str] = None
-
 
 class RuleTestCaseResponse(RuleTestCaseBase):
     id: str
@@ -62,27 +46,24 @@ class RuleTestCaseResponse(RuleTestCaseBase):
     class Config:
         from_attributes = True
 
-
 class RuleBase(BaseModel):
     rule_code: str
     title: str
     category: str
     description: str
     source_document_id: Optional[str] = None
-    source_version: str = "1.0"
-    source_quote: str  # Mandatory evidence citation
+    source_version: str = '1.0'
+    source_quote: str
     source_section: str
-    severity: str = "BLOCKING"  # BLOCKING, WARNING, ADVISORY
-    enforcement_type: str = "DETERMINISTIC"  # DETERMINISTIC, SEMANTIC_AI
+    severity: str = 'BLOCKING'
+    enforcement_type: str = 'DETERMINISTIC'
     pass_example: Optional[str] = None
     fail_example: Optional[str] = None
-    ambiguity_status: str = "CLEAR"  # CLEAR, AMBIGUOUS, CONFLICTING
-    status: str = "ACTIVE"
-
+    ambiguity_status: str = 'CLEAR'
+    status: str = 'ACTIVE'
 
 class RuleCreate(RuleBase):
     test_cases: Optional[List[RuleTestCaseBase]] = None
-
 
 class RuleUpdate(BaseModel):
     title: Optional[str] = None
@@ -97,7 +78,6 @@ class RuleUpdate(BaseModel):
     ambiguity_status: Optional[str] = None
     status: Optional[str] = None
 
-
 class RuleResponse(RuleBase):
     id: str
     rulebook_id: str
@@ -107,13 +87,11 @@ class RuleResponse(RuleBase):
     class Config:
         from_attributes = True
 
-
 class RulebookBase(BaseModel):
     version: str
     title: str
     description: Optional[str] = None
-    status: str = "ACTIVE"
-
+    status: str = 'ACTIVE'
 
 class RulebookResponse(RulebookBase):
     id: str
@@ -125,11 +103,6 @@ class RulebookResponse(RulebookBase):
 
     class Config:
         from_attributes = True
-
-
-# ==========================================
-# Approved Fact Vault Schemas
-# ==========================================
 
 class FactBase(BaseModel):
     fact_code: str
@@ -143,12 +116,10 @@ class FactBase(BaseModel):
     owner_email: str
     valid_from: Optional[datetime] = None
     valid_until: datetime
-    status: str = "ACTIVE"  # ACTIVE, STALE, SUPERSEDED
-
+    status: str = 'ACTIVE'
 
 class FactCreate(FactBase):
     pass
-
 
 class FactUpdate(BaseModel):
     subject: Optional[str] = None
@@ -162,7 +133,6 @@ class FactUpdate(BaseModel):
     valid_until: Optional[datetime] = None
     status: Optional[str] = None
 
-
 class FactResponse(FactBase):
     id: str
     workspace_id: str
@@ -172,24 +142,18 @@ class FactResponse(FactBase):
     class Config:
         from_attributes = True
 
-
-# ==========================================
-# Review & Finding Schemas
-# ==========================================
-
 class ExtractedClaimResponse(BaseModel):
     id: str
     content_version_id: str
     matched_fact_id: Optional[str] = None
     claim_text: str
     claim_type: str
-    status: str  # SUPPORTED, STALE, CONTRADICTED, UNSUPPORTED, NEEDS_PROOF
+    status: str
     reasoning: Optional[str] = None
     matched_fact: Optional[FactResponse] = None
 
     class Config:
         from_attributes = True
-
 
 class IntentCardResponse(BaseModel):
     id: str
@@ -205,14 +169,13 @@ class IntentCardResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class FindingResponse(BaseModel):
     id: str
     content_version_id: str
     rule_id: Optional[str] = None
     rule_code: Optional[str] = None
     category: str
-    severity: str  # BLOCKING, WARNING, ADVISORY
+    severity: str
     span_start: int
     span_end: int
     matched_text: str
@@ -220,28 +183,25 @@ class FindingResponse(BaseModel):
     source_section: Optional[str] = None
     explanation: str
     evidence_status: str
-    confidence_tier: str  # DETERMINISTIC, EVIDENCE_BACKED_AI, ADVISORY
+    confidence_tier: str
     suggested_correction: Optional[str] = None
-    verification_status: str  # VERIFIED, REJECTED, DEMOTED
+    verification_status: str
     rejection_reason: Optional[str] = None
-    user_decision: str  # PENDING, ACCEPTED, DISPUTED, OVERRIDDEN
+    user_decision: str
     created_at: datetime
 
     class Config:
         from_attributes = True
 
-
 class FindingDecisionUpdate(BaseModel):
-    user_decision: str  # ACCEPTED, DISPUTED, OVERRIDDEN
+    user_decision: str
     override_reason: Optional[str] = None
-
 
 class ContentSubmissionCreate(BaseModel):
     title: str
     content_text: str
-    content_type: str = "TEXT"  # TEXT, PDF, DOCX, IMAGE
+    content_type: str = 'TEXT'
     filename: Optional[str] = None
-
 
 class ContentSubmissionResponse(BaseModel):
     id: str
@@ -258,7 +218,6 @@ class ContentSubmissionResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 class ReviewResultResponse(BaseModel):
     submission_id: str
@@ -278,16 +237,10 @@ class ReviewResultResponse(BaseModel):
     suggested_full_text: Optional[str] = None
     model_disclosure: Dict[str, Any] = {}
 
-
-# ==========================================
-# Approval & Decision Schemas
-# ==========================================
-
 class ApprovalDecisionCreate(BaseModel):
-    decision: str  # APPROVED, APPROVED_WITH_EXCEPTION, REJECTED, CHANGES_REQUESTED
+    decision: str
     reason: Optional[str] = None
     exception_category: Optional[str] = None
-
 
 class ApprovalDecisionResponse(BaseModel):
     id: str
@@ -302,11 +255,6 @@ class ApprovalDecisionResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-# ==========================================
-# Review Receipt & Audit Schemas
-# ==========================================
 
 class ReviewReceiptResponse(BaseModel):
     id: str
@@ -325,7 +273,6 @@ class ReviewReceiptResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class AuditEventResponse(BaseModel):
     id: str
     workspace_id: str
@@ -341,7 +288,6 @@ class AuditEventResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class AuditChainVerificationResult(BaseModel):
     is_valid: bool
     total_events: int
@@ -349,15 +295,9 @@ class AuditChainVerificationResult(BaseModel):
     broken_event_id: Optional[str] = None
     message: str
 
-
-# ==========================================
-# Governance Insights Schemas
-# ==========================================
-
 class CategoryStat(BaseModel):
     category: str
     count: int
-
 
 class RepeatedRuleOverride(BaseModel):
     rule_id: str
@@ -365,7 +305,6 @@ class RepeatedRuleOverride(BaseModel):
     rule_title: str
     override_count: int
     common_reasons: List[str]
-
 
 class ProposedAmendmentResponse(BaseModel):
     id: str
@@ -381,7 +320,6 @@ class ProposedAmendmentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class GovernanceInsightsResponse(BaseModel):
     total_reviews: int
     passed_reviews: int
@@ -395,30 +333,22 @@ class GovernanceInsightsResponse(BaseModel):
     stale_claims_detected: int
     ambiguous_rules_count: int
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Brand Asset Schemas
-# ─────────────────────────────────────────────────────────────────────────────
-
 class BrandAssetBase(BaseModel):
     name: str
-    category: str  # LOGOS, TYPOGRAPHY, COLORS, MARKETING, GUIDELINES, OTHER
+    category: str
     description: Optional[str] = None
     intended_usage: Optional[str] = None
-    version: Optional[str] = "1.0.0"
+    version: Optional[str] = '1.0.0'
     metadata_json: Optional[Dict[str, Any]] = None
-
 
 class BrandAssetCreate(BrandAssetBase):
     pass
 
-
 class BrandColorCreate(BaseModel):
     name: str
     hex: str
-    role: str = "Primary"  # Primary, Secondary, Accent, Background, Text
+    role: str = 'Primary'
     intended_usage: Optional[str] = None
-
 
 class BrandAssetUpdate(BaseModel):
     name: Optional[str] = None
@@ -428,11 +358,9 @@ class BrandAssetUpdate(BaseModel):
     version: Optional[str] = None
     metadata_json: Optional[Dict[str, Any]] = None
 
-
 class BrandAssetApproval(BaseModel):
-    decision: str  # APPROVED or REJECTED
+    decision: str
     reason: Optional[str] = None
-
 
 class BrandAssetResponse(BaseModel):
     id: str
@@ -446,7 +374,7 @@ class BrandAssetResponse(BaseModel):
     file_format: Optional[str] = None
     file_size_bytes: int = 0
     mime_type: Optional[str] = None
-    version: str = "1.0.0"
+    version: str = '1.0.0'
     status: str
     rejection_reason: Optional[str] = None
     metadata_json: Dict[str, Any] = {}
@@ -463,7 +391,6 @@ class BrandAssetResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class BrandAssetStats(BaseModel):
     total_assets: int
     approved_assets: int
@@ -471,4 +398,3 @@ class BrandAssetStats(BaseModel):
     archived_assets: int
     rejected_assets: int
     categories_summary: Dict[str, int]
-

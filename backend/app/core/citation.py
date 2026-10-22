@@ -1,177 +1,127 @@
-"""Independent Citation Verifier for CANON Brand Governance.
-Core Invariant: NO CITATION, NO BLOCKING FLAG.
-
-Any finding produced by AI must strictly cite an existing rule and an exact
-source quote matching stored guideline text. If verification fails, the finding
-is demoted to non-blocking ADVISORY or rejected entirely.
-"""
 import unicodedata
 import re
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from app.db.models import Rule, Rulebook
-
+SINGLE_QUOTE_CLEANER = re.compile('[\\u2018\\u2019\\u201A\\u201B\\u2032\\u2035]')
+DOUBLE_QUOTE_CLEANER = re.compile('[\\u201C\\u201D\\u201E\\u201F\\u2033\\u2036]')
+SPACE_CLEANER = re.compile('\\s+')
 
 def normalize_source_text(text: str) -> str:
-    """
-    Standardize text for reliable evidence matching:
-    1. Unicode normalization (NFKC).
-    2. Collapse all repeated whitespace/newlines to single space.
-    3. Strip enclosing straight or curly quotes and trailing punctuation.
-    """
     if not text:
-        return ""
-    normalized = unicodedata.normalize("NFKC", text)
-    normalized = re.sub(r'[\u2018\u2019\u201A\u201B\u2032\u2035]', "'", normalized)
-    normalized = re.sub(r'[\u201C\u201D\u201E\u201F\u2033\u2036]', '"', normalized)
-    normalized = re.sub(r'\s+', ' ', normalized)
-    return normalized.strip().lower()
+        return ''
+    buffer = unicodedata.normalize('NFKC', text)
+    buffer = SINGLE_QUOTE_CLEANER.sub("'", buffer)
+    buffer = DOUBLE_QUOTE_CLEANER.sub('"', buffer)
+    buffer = SPACE_CLEANER.sub(' ', buffer)
+    return buffer.strip().lower()
 
+class SpecializedCategoryValidator:
+
+    @staticmethod
+    def audit_claims(diagnostic: Dict[str, Any], corpus: str) -> Optional[Dict[str, Any]]:
+        if diagnostic.get('category') != 'Claims':
+            return None
+        target = diagnostic.get('matched_text', '')
+        if target and target not in corpus:
+            return {**diagnostic, 'confidence_tier': 'ADVISORY', 'severity': 'ADVISORY', 'verification_status': 'REJECTED', 'evidence_status': 'UNVERIFIED', 'rejection_reason': 'Rejected: Claim text does not appear in submitted content.'}
+        return {**diagnostic, 'confidence_tier': 'DETERMINISTIC', 'verification_status': 'VERIFIED', 'evidence_status': 'VERIFIED'}
+
+    @staticmethod
+    def audit_visual_or_a11y(diagnostic: Dict[str, Any], corpus: str) -> Optional[Dict[str, Any]]:
+        if diagnostic.get('category') not in ('Visual', 'Accessibility'):
+            return None
+        out = dict(diagnostic)
+        target = out.get('matched_text', '')
+        if target and target in corpus:
+            pos = corpus.find(target)
+            out['span_start'] = pos
+            out['span_end'] = pos + len(target)
+        out['confidence_tier'] = 'DETERMINISTIC'
+        out['verification_status'] = 'VERIFIED'
+        out['evidence_status'] = 'VERIFIED'
+        return out
+
+class RuleResolver:
+
+    @staticmethod
+    def fetch_active_directive(db_session: Session, book_id: str, r_id: Optional[str], r_code: Optional[str]) -> Optional[Rule]:
+        if r_id:
+            return db_session.query(Rule).filter(Rule.id == r_id, Rule.rulebook_id == book_id, Rule.status == 'ACTIVE').first()
+        if r_code:
+            return db_session.query(Rule).filter(Rule.rule_code == r_code, Rule.rulebook_id == book_id, Rule.status == 'ACTIVE').first()
+        return None
+
+class SpanAdjuster:
+
+    @staticmethod
+    def reconcile_span(entry: Dict[str, Any], corpus: str) -> Optional[Dict[str, Any]]:
+        target_token = entry.get('matched_text', '')
+        if not target_token:
+            return entry
+        p_start = entry.get('span_start', 0)
+        p_end = entry.get('span_end', 0)
+        if corpus[p_start:p_end] == target_token:
+            return entry
+        discovered = corpus.find(target_token)
+        if discovered != -1:
+            amended = dict(entry)
+            amended['span_start'] = discovered
+            amended['span_end'] = discovered + len(target_token)
+            return amended
+        return None
 
 class CitationVerifier:
-    """
-    Independent Verification Engine running separately from AI generation.
-    Enforces the 'No Citation, No Blocking Flag' architectural invariant.
-    """
 
     def __init__(self, db: Session):
         self.db = db
 
-    def verify_finding(
-        self,
-        finding: Dict[str, Any],
-        active_rulebook_id: str,
-        content_text: str
-    ) -> Dict[str, Any]:
-        """
-        Verify an individual finding candidate.
-        Returns the updated finding dict with confidence tier, verification status,
-        and demotion/rejection notes if verification fails.
-        """
-        result = dict(finding)
-        rule_id = result.get("rule_id")
-        rule_code = result.get("rule_code")
-        source_quote = result.get("source_quote")
-        span_start = result.get("span_start", 0)
-        span_end = result.get("span_end", 0)
-        matched_text = result.get("matched_text", "")
-        
-        # Special categories with dedicated deterministic validation
-        category = result.get("category")
-        if category == "Claims":
-            if matched_text and matched_text not in content_text:
-                result["confidence_tier"] = "ADVISORY"
-                result["severity"] = "ADVISORY"
-                result["verification_status"] = "REJECTED"
-                result["evidence_status"] = "UNVERIFIED"
-                result["rejection_reason"] = "Rejected: Claim text does not appear in submitted content."
-                return result
-            result["confidence_tier"] = "DETERMINISTIC"
-            result["verification_status"] = "VERIFIED"
-            result["evidence_status"] = "VERIFIED"
-            return result
-
-        if category in ["Visual", "Accessibility"]:
-            if matched_text and matched_text in content_text:
-                idx = content_text.find(matched_text)
-                result["span_start"] = idx
-                result["span_end"] = idx + len(matched_text)
-            result["confidence_tier"] = "DETERMINISTIC"
-            result["verification_status"] = "VERIFIED"
-            result["evidence_status"] = "VERIFIED"
-            return result
-
-        # Invariant A: Must provide a valid Rule ID or Rule Code in active rulebook
-        rule = None
-        if rule_id:
-            rule = self.db.query(Rule).filter(
-                Rule.id == rule_id,
-                Rule.rulebook_id == active_rulebook_id,
-                Rule.status == "ACTIVE"
-            ).first()
-        elif rule_code:
-            rule = self.db.query(Rule).filter(
-                Rule.rule_code == rule_code,
-                Rule.rulebook_id == active_rulebook_id,
-                Rule.status == "ACTIVE"
-            ).first()
-
-        if not rule:
-            # Rule does not exist in the active rulebook!
-            # Violation of Invariant: Cannot create a blocking finding on a non-existent rule.
-            result["confidence_tier"] = "ADVISORY"
-            result["severity"] = "ADVISORY"  # Strictly demoted to non-blocking
-            result["verification_status"] = "DEMOTED"
-            result["evidence_status"] = "MISSING"
-            result["rejection_reason"] = (
-                f"Demoted to Advisory: Rule '{rule_code or rule_id}' does not exist in active rulebook."
-            )
-            return result
-
-        # Invariant B: Content Span Alignment & Existence Check
-        # Verify that the matched text exists at or near the specified span in the content
-        if matched_text:
-            text_at_span = content_text[span_start:span_end]
-            if text_at_span != matched_text:
-                # Attempt to locate the actual span in content
-                idx = content_text.find(matched_text)
-                if idx != -1:
-                    result["span_start"] = idx
-                    result["span_end"] = idx + len(matched_text)
-                else:
-                    # Content text does not even contain the flagged span!
-                    result["confidence_tier"] = "ADVISORY"
-                    result["severity"] = "ADVISORY"
-                    result["verification_status"] = "REJECTED"
-                    result["evidence_status"] = "UNVERIFIED"
-                    result["rejection_reason"] = "Rejected: Flagged content span does not exist in submitted text."
-                    return result
-
-        is_deterministic = result.get("confidence_tier") == "DETERMINISTIC"
-
-        # Invariant C: Confirm exact source quote for non-deterministic findings
+    def verify_finding(self, finding: Dict[str, Any], active_rulebook_id: str, content_text: str) -> Dict[str, Any]:
+        item = dict(finding)
+        claims_eval = SpecializedCategoryValidator.audit_claims(item, content_text)
+        if claims_eval is not None:
+            return claims_eval
+        visual_eval = SpecializedCategoryValidator.audit_visual_or_a11y(item, content_text)
+        if visual_eval is not None:
+            return visual_eval
+        rule_entity = RuleResolver.fetch_active_directive(self.db, active_rulebook_id, item.get('rule_id'), item.get('rule_code'))
+        if not rule_entity:
+            item['confidence_tier'] = 'ADVISORY'
+            item['severity'] = 'ADVISORY'
+            item['verification_status'] = 'DEMOTED'
+            item['evidence_status'] = 'MISSING'
+            item['rejection_reason'] = f"Demoted to Advisory: Rule '{item.get('rule_code') or item.get('rule_id')}' does not exist in active rulebook."
+            return item
+        adjusted_item = SpanAdjuster.reconcile_span(item, content_text)
+        if adjusted_item is None:
+            item['confidence_tier'] = 'ADVISORY'
+            item['severity'] = 'ADVISORY'
+            item['verification_status'] = 'REJECTED'
+            item['evidence_status'] = 'UNVERIFIED'
+            item['rejection_reason'] = 'Rejected: Flagged content span does not exist in submitted text.'
+            return item
+        item = adjusted_item
+        is_deterministic = item.get('confidence_tier') == 'DETERMINISTIC'
         if not is_deterministic:
-            normalized_cited_quote = normalize_source_text(source_quote or "")
-            normalized_stored_quote = normalize_source_text(rule.source_quote)
-            
-            # Check if the cited quote is present in the stored quote, or vice-versa
-            quote_matched = False
-            if normalized_cited_quote and (
-                normalized_cited_quote in normalized_stored_quote or
-                normalized_stored_quote in normalized_cited_quote
-            ):
-                quote_matched = True
+            cited_normalized = normalize_source_text(item.get('source_quote') or '')
+            stored_normalized = normalize_source_text(rule_entity.source_quote)
+            matched = bool(cited_normalized and (cited_normalized in stored_normalized or stored_normalized in cited_normalized))
+            if not matched:
+                item['confidence_tier'] = 'ADVISORY'
+                item['severity'] = 'ADVISORY'
+                item['verification_status'] = 'DEMOTED'
+                item['evidence_status'] = 'UNVERIFIED'
+                item['rejection_reason'] = f'Demoted to Advisory: Cited source quote could not be verified in stored guideline text for {rule_entity.rule_code}.'
+                return item
+        item['rule_id'] = rule_entity.id
+        item['rule_code'] = rule_entity.rule_code
+        item['source_quote'] = rule_entity.source_quote
+        item['source_section'] = rule_entity.source_section
+        item['confidence_tier'] = 'DETERMINISTIC' if is_deterministic else 'EVIDENCE_BACKED_AI'
+        item['verification_status'] = 'VERIFIED'
+        item['evidence_status'] = 'VERIFIED'
+        item['rejection_reason'] = None
+        return item
 
-            if not quote_matched:
-                # Fabricated or inaccurate quote citation detected!
-                result["confidence_tier"] = "ADVISORY"
-                result["severity"] = "ADVISORY"
-                result["verification_status"] = "DEMOTED"
-                result["evidence_status"] = "UNVERIFIED"
-                result["rejection_reason"] = (
-                    f"Demoted to Advisory: Cited source quote could not be verified in stored guideline text for {rule.rule_code}."
-                )
-                return result
-
-        # All invariants verified!
-        result["rule_id"] = rule.id
-        result["rule_code"] = rule.rule_code
-        result["source_quote"] = rule.source_quote
-        result["source_section"] = rule.source_section
-        result["confidence_tier"] = "DETERMINISTIC" if is_deterministic else "EVIDENCE_BACKED_AI"
-        result["verification_status"] = "VERIFIED"
-        result["evidence_status"] = "VERIFIED"
-        result["rejection_reason"] = None
-        return result
-
-    def verify_all(
-        self,
-        findings: List[Dict[str, Any]],
-        active_rulebook_id: str,
-        content_text: str
-    ) -> List[Dict[str, Any]]:
-        """Verify an entire batch of candidate findings."""
-        verified = []
-        for f in findings:
-            verified.append(self.verify_finding(f, active_rulebook_id, content_text))
-        return verified
+    def verify_all(self, findings: List[Dict[str, Any]], active_rulebook_id: str, content_text: str) -> List[Dict[str, Any]]:
+        return [self.verify_finding(f, active_rulebook_id, content_text) for f in findings]

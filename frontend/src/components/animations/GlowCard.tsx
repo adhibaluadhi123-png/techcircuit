@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 
 interface GlowCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
   glowColor?: string;
   borderGlow?: string;
-  intensity?: number; // 0.0 – 1.0
+  intensity?: number;
 }
 
 export function GlowCard({
@@ -47,7 +47,6 @@ export function GlowCard({
       }}
       {...props}
     >
-      {/* Radial cursor glow layer */}
       <div
         className="pointer-events-none absolute inset-0 transition-opacity duration-300 rounded-[inherit]"
         style={{

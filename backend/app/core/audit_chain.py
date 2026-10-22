@@ -1,17 +1,3 @@
-"""Tamper-Evident Hash-Chained Audit Ledger and Review Receipts.
-
-Guarantees:
-- Deterministic hash chain linking every event block to its predecessor via SHA-256.
-- Strict workspace isolation for independent audit ledgers per tenant.
-- Concurrency serialization via threading lock and database unique constraints.
-- Signed cryptographic checkpoints to detect full table deletion or historical rewrites.
-
-Limitations:
-- A database hash chain alone is tamper-evident, NOT immutable without external anchor.
-  If an attacker possesses full database admin access and application secrets, historical
-  blocks could theoretically be recomputed without detection unless signed checkpoints
-  are pushed to immutable external storage or append-only log services.
-"""
 import hashlib
 import hmac
 import json
@@ -22,230 +8,113 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.db.models import AuditEvent, ReviewReceipt, AuditCheckpoint
 from app.config import settings
+GENESIS_PREV_HASH = '0' * 64
+_MUTEX = threading.RLock()
 
-GENESIS_PREV_HASH = "0000000000000000000000000000000000000000000000000000000000000000"
-_chain_lock = threading.RLock()
+class LedgerDigest:
 
+    @staticmethod
+    def sha256_hex(blob: str) -> str:
+        return hashlib.sha256(blob.encode('utf-8')).hexdigest()
+
+    @staticmethod
+    def canonical_json(data: Any) -> str:
+        return json.dumps(data, sort_keys=True, separators=(',', ':'), default=str)
+
+    @classmethod
+    def block_digest(cls, prior: str, operator: str, action: str, body_hash: str, stamp: str) -> str:
+        composite = f'{prior}:{operator}:{action}:{body_hash}:{stamp}'
+        return cls.sha256_hex(composite)
+
+    @staticmethod
+    def hmac_signature(secret_key: str, message: bytes) -> str:
+        return hmac.new(secret_key.encode('utf-8'), message, hashlib.sha256).hexdigest()
+
+class ChainAuditor:
+
+    @staticmethod
+    def inspect_block(prior_expected: str, event_node: AuditEvent) -> Optional[str]:
+        if event_node.prev_event_hash != prior_expected:
+            return f'Broken chain link at block {event_node.sequence_number}. Expected prev {prior_expected}, got {event_node.prev_event_hash}.'
+        canon_hash = LedgerDigest.sha256_hex(LedgerDigest.canonical_json(event_node.details))
+        std_hash = LedgerDigest.sha256_hex(json.dumps(event_node.details, sort_keys=True, default=str))
+        if event_node.payload_hash not in (canon_hash, std_hash):
+            return f'Tampered payload detected at block {event_node.sequence_number}.'
+        epoch = event_node.timestamp_str if hasattr(event_node, 'timestamp_str') and event_node.timestamp_str else event_node.created_at.isoformat()
+        recomputed = LedgerDigest.block_digest(prior_expected, event_node.actor_id, event_node.event_type, event_node.payload_hash, epoch)
+        if recomputed != event_node.current_event_hash:
+            return f'Invalid signature/hash at block {event_node.sequence_number}.'
+        return None
+
+    @classmethod
+    def audit_ledger(cls, session: Session, tenant_id: str) -> Dict[str, Any]:
+        records = session.query(AuditEvent).filter(AuditEvent.workspace_id == tenant_id).order_by(AuditEvent.sequence_number.asc(), AuditEvent.created_at.asc()).all()
+        total = len(records)
+        if total == 0:
+            return {'is_valid': True, 'total_events': 0, 'verified_events': 0, 'broken_event_id': None, 'message': 'Audit chain is empty. Clean state.'}
+        cursor_hash = GENESIS_PREV_HASH
+        idx = 0
+        while idx < total:
+            target = records[idx]
+            fault = cls.inspect_block(cursor_hash, target)
+            if fault:
+                return {'is_valid': False, 'total_events': total, 'verified_events': idx, 'broken_event_id': target.id, 'message': fault}
+            cursor_hash = target.current_event_hash
+            idx += 1
+        checkpoints = session.query(AuditCheckpoint).filter(AuditCheckpoint.workspace_id == tenant_id).order_by(AuditCheckpoint.sequence_number.desc()).all()
+        for cp in checkpoints:
+            packet = f'{tenant_id}:{cp.sequence_number}:{cp.block_count}:{cp.head_hash}'.encode('utf-8')
+            valid_sig = LedgerDigest.hmac_signature(settings.SECRET_KEY, packet)
+            if not hmac.compare_digest(cp.checkpoint_signature, valid_sig):
+                return {'is_valid': False, 'total_events': total, 'verified_events': total, 'broken_event_id': None, 'message': f'Tampered checkpoint detected: invalid checkpoint signature for #{cp.sequence_number}.'}
+            if total < cp.block_count:
+                return {'is_valid': False, 'total_events': total, 'verified_events': total, 'broken_event_id': None, 'message': f'Ledger truncation detected! Recorded {total} events, but signed checkpoint certified {cp.block_count} blocks.'}
+        return {'is_valid': True, 'total_events': total, 'verified_events': total, 'broken_event_id': None, 'message': f'Audit chain verified successfully. All {total} cryptographic blocks intact.'}
 
 def calculate_sha256(text: str) -> str:
-    """Compute standard SHA-256 hex digest."""
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
+    return LedgerDigest.sha256_hex(text)
 
 def canonical_json_dumps(obj: Any) -> str:
-    """Produce deterministic, canonical JSON encoding sorted by keys without extra whitespace."""
-    return json.dumps(obj, sort_keys=True, separators=(',', ':'), default=str)
+    return LedgerDigest.canonical_json(obj)
 
+def calculate_event_hash(prev_hash: str, actor_id: str, event_type: str, payload_hash: str, timestamp_iso: str) -> str:
+    return LedgerDigest.block_digest(prev_hash, actor_id, event_type, payload_hash, timestamp_iso)
 
-def calculate_event_hash(
-    prev_hash: str,
-    actor_id: str,
-    event_type: str,
-    payload_hash: str,
-    timestamp_iso: str
-) -> str:
-    """
-    Calculate deterministic event block hash:
-    Hash = SHA-256(prev_hash : actor_id : event_type : payload_hash : timestamp_iso)
-    """
-    block_string = f"{prev_hash}:{actor_id}:{event_type}:{payload_hash}:{timestamp_iso}"
-    return hashlib.sha256(block_string.encode("utf-8")).hexdigest()
-
-
-def record_audit_event(
-    db: Session,
-    workspace_id: str,
-    event_type: str,
-    actor_id: str,
-    actor_role: str,
-    details: Dict[str, Any]
-) -> AuditEvent:
-    """
-    Append a new event to the workspace's sequential hash chain.
-    Thread-safe and guarded against concurrent fork collisions.
-    """
-    with _chain_lock:
-        last_event = (
-            db.query(AuditEvent)
-            .filter(AuditEvent.workspace_id == workspace_id)
-            .order_by(AuditEvent.sequence_number.desc(), AuditEvent.created_at.desc())
-            .first()
-        )
-        
-        prev_hash = last_event.current_event_hash if last_event else GENESIS_PREV_HASH
-        next_seq = (last_event.sequence_number + 1) if (last_event and last_event.sequence_number) else (
-            db.query(AuditEvent).filter(AuditEvent.workspace_id == workspace_id).count() + 1
-        )
-        
-        # Canonical deterministic JSON serialization
-        payload_str = canonical_json_dumps(details)
-        payload_hash = calculate_sha256(payload_str)
-        
-        now = datetime.now(timezone.utc)
-        timestamp_iso = now.isoformat()
-        current_hash = calculate_event_hash(prev_hash, actor_id, event_type, payload_hash, timestamp_iso)
-        
-        event = AuditEvent(
-            workspace_id=workspace_id,
-            sequence_number=next_seq,
-            event_type=event_type,
-            actor_id=actor_id,
-            actor_role=actor_role,
-            payload_hash=payload_hash,
-            prev_event_hash=prev_hash,
-            current_event_hash=current_hash,
-            timestamp_str=timestamp_iso,
-            details=details,
-            created_at=now
-        )
-        db.add(event)
+def record_audit_event(db: Session, workspace_id: str, event_type: str, actor_id: str, actor_role: str, details: Dict[str, Any]) -> AuditEvent:
+    with _MUTEX:
+        ancestor = db.query(AuditEvent).filter(AuditEvent.workspace_id == workspace_id).order_by(AuditEvent.sequence_number.desc(), AuditEvent.created_at.desc()).first()
+        antecedent_hash = ancestor.current_event_hash if ancestor else GENESIS_PREV_HASH
+        seq_idx = ancestor.sequence_number + 1 if ancestor and ancestor.sequence_number else db.query(AuditEvent).filter(AuditEvent.workspace_id == workspace_id).count() + 1
+        body_str = LedgerDigest.canonical_json(details)
+        body_digest = LedgerDigest.sha256_hex(body_str)
+        current_time = datetime.now(timezone.utc)
+        iso_mark = current_time.isoformat()
+        current_hash = LedgerDigest.block_digest(antecedent_hash, actor_id, event_type, body_digest, iso_mark)
+        record = AuditEvent(workspace_id=workspace_id, sequence_number=seq_idx, event_type=event_type, actor_id=actor_id, actor_role=actor_role, payload_hash=body_digest, prev_event_hash=antecedent_hash, current_event_hash=current_hash, timestamp_str=iso_mark, details=details, created_at=current_time)
+        db.add(record)
         try:
             db.commit()
-            db.refresh(event)
+            db.refresh(record)
         except IntegrityError:
             db.rollback()
             raise RuntimeError(f"Concurrent chain append conflict detected in workspace '{workspace_id}'.")
-        return event
-
+        return record
 
 def create_audit_checkpoint(db: Session, workspace_id: str) -> AuditCheckpoint:
-    """
-    Create a cryptographically signed checkpoint of the current ledger head.
-    Protects against complete database table deletion or silent historical replacement.
-    """
-    with _chain_lock:
-        head_event = (
-            db.query(AuditEvent)
-            .filter(AuditEvent.workspace_id == workspace_id)
-            .order_by(AuditEvent.sequence_number.desc())
-            .first()
-        )
-        if not head_event:
+    with _MUTEX:
+        tip = db.query(AuditEvent).filter(AuditEvent.workspace_id == workspace_id).order_by(AuditEvent.sequence_number.desc()).first()
+        if not tip:
             raise ValueError(f"Cannot create checkpoint on empty audit chain in workspace '{workspace_id}'.")
-        
-        count = db.query(AuditEvent).filter(AuditEvent.workspace_id == workspace_id).count()
-        last_ckpt = (
-            db.query(AuditCheckpoint)
-            .filter(AuditCheckpoint.workspace_id == workspace_id)
-            .order_by(AuditCheckpoint.sequence_number.desc())
-            .first()
-        )
-        next_ckpt_seq = (last_ckpt.sequence_number + 1) if last_ckpt else 1
-        
-        sig_data = f"{workspace_id}:{next_ckpt_seq}:{count}:{head_event.current_event_hash}".encode("utf-8")
-        signature = hmac.new(settings.SECRET_KEY.encode("utf-8"), sig_data, hashlib.sha256).hexdigest()
-        
-        checkpoint = AuditCheckpoint(
-            workspace_id=workspace_id,
-            sequence_number=next_ckpt_seq,
-            block_count=count,
-            head_hash=head_event.current_event_hash,
-            checkpoint_signature=signature,
-            created_at=datetime.now(timezone.utc)
-        )
-        db.add(checkpoint)
+        tally = db.query(AuditEvent).filter(AuditEvent.workspace_id == workspace_id).count()
+        preceding_cp = db.query(AuditCheckpoint).filter(AuditCheckpoint.workspace_id == workspace_id).order_by(AuditCheckpoint.sequence_number.desc()).first()
+        cp_seq = preceding_cp.sequence_number + 1 if preceding_cp else 1
+        payload = f'{workspace_id}:{cp_seq}:{tally}:{tip.current_event_hash}'.encode('utf-8')
+        sig = LedgerDigest.hmac_signature(settings.SECRET_KEY, payload)
+        entry = AuditCheckpoint(workspace_id=workspace_id, sequence_number=cp_seq, block_count=tally, head_hash=tip.current_event_hash, checkpoint_signature=sig, created_at=datetime.now(timezone.utc))
+        db.add(entry)
         db.commit()
-        db.refresh(checkpoint)
-        return checkpoint
-
+        db.refresh(entry)
+        return entry
 
 def verify_audit_chain(db: Session, workspace_id: str) -> Dict[str, Any]:
-    """
-    Verify the integrity of the audit ledger.
-    Traverses the chronological sequence and confirms that every current_event_hash
-    faithfully reflects the previous link, unmodified payload, and valid signature.
-    Also validates against signed checkpoints if available.
-    """
-    events = (
-        db.query(AuditEvent)
-        .filter(AuditEvent.workspace_id == workspace_id)
-        .order_by(AuditEvent.sequence_number.asc(), AuditEvent.created_at.asc())
-        .all()
-    )
-    
-    if not events:
-        return {
-            "is_valid": True,
-            "total_events": 0,
-            "verified_events": 0,
-            "broken_event_id": None,
-            "message": "Audit chain is empty. Clean state."
-        }
-    
-    expected_prev = GENESIS_PREV_HASH
-    for idx, ev in enumerate(events):
-        # Check previous hash link
-        if ev.prev_event_hash != expected_prev:
-            return {
-                "is_valid": False,
-                "total_events": len(events),
-                "verified_events": idx,
-                "broken_event_id": ev.id,
-                "message": f"Broken chain link at block {idx+1} (Event ID: {ev.id}). Expected prev {expected_prev}, got {ev.prev_event_hash}."
-            }
-            
-        # Re-verify payload hash (support both canonical separators and standard sort_keys)
-        canonical_str = canonical_json_dumps(ev.details)
-        canonical_hash = calculate_sha256(canonical_str)
-        standard_str = json.dumps(ev.details, sort_keys=True, default=str)
-        standard_hash = calculate_sha256(standard_str)
-        
-        if ev.payload_hash not in [canonical_hash, standard_hash]:
-            return {
-                "is_valid": False,
-                "total_events": len(events),
-                "verified_events": idx,
-                "broken_event_id": ev.id,
-                "message": f"Tampered payload detected at block {idx+1} (Event ID: {ev.id})."
-            }
-            
-        # Re-verify block hash using stored timestamp_str
-        timestamp_str = ev.timestamp_str if hasattr(ev, "timestamp_str") and ev.timestamp_str else ev.created_at.isoformat()
-        recalculated_block_hash = calculate_event_hash(
-            expected_prev, ev.actor_id, ev.event_type, ev.payload_hash, timestamp_str
-        )
-        if recalculated_block_hash != ev.current_event_hash:
-            return {
-                "is_valid": False,
-                "total_events": len(events),
-                "verified_events": idx,
-                "broken_event_id": ev.id,
-                "message": f"Invalid signature/hash at block {idx+1} (Event ID: {ev.id})."
-            }
-            
-        expected_prev = ev.current_event_hash
-
-    # Check latest signed checkpoint if present
-    checkpoints = (
-        db.query(AuditCheckpoint)
-        .filter(AuditCheckpoint.workspace_id == workspace_id)
-        .order_by(AuditCheckpoint.sequence_number.desc())
-        .all()
-    )
-    for ckpt in checkpoints:
-        sig_data = f"{workspace_id}:{ckpt.sequence_number}:{ckpt.block_count}:{ckpt.head_hash}".encode("utf-8")
-        expected_sig = hmac.new(settings.SECRET_KEY.encode("utf-8"), sig_data, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(ckpt.checkpoint_signature, expected_sig):
-            return {
-                "is_valid": False,
-                "total_events": len(events),
-                "verified_events": len(events),
-                "broken_event_id": None,
-                "message": f"Tampered checkpoint detected: invalid checkpoint signature for #{ckpt.sequence_number}."
-            }
-        if len(events) < ckpt.block_count:
-            return {
-                "is_valid": False,
-                "total_events": len(events),
-                "verified_events": len(events),
-                "broken_event_id": None,
-                "message": f"Ledger truncation detected! Recorded {len(events)} events, but signed checkpoint certified {ckpt.block_count} blocks."
-            }
-
-    return {
-        "is_valid": True,
-        "total_events": len(events),
-        "verified_events": len(events),
-        "broken_event_id": None,
-        "message": f"Audit chain verified successfully. All {len(events)} cryptographic blocks intact."
-    }
+    return ChainAuditor.audit_ledger(db, workspace_id)

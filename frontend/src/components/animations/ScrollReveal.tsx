@@ -5,7 +5,7 @@ import React, { useEffect, useRef, useState } from "react";
 interface ScrollRevealProps {
   children: React.ReactNode;
   className?: string;
-  delay?: number; // ms
+  delay?: number;
   direction?: "up" | "down" | "left" | "right" | "scale" | "fade";
   once?: boolean;
   threshold?: number;
@@ -48,19 +48,19 @@ export function ScrollReveal({
 
     if (!visible) {
       switch (direction) {
-        case "up":    return { ...base, opacity: 0, transform: "translateY(32px)" };
-        case "down":  return { ...base, opacity: 0, transform: "translateY(-32px)" };
-        case "left":  return { ...base, opacity: 0, transform: "translateX(32px)" };
+        case "up": return { ...base, opacity: 0, transform: "translateY(32px)" };
+        case "down": return { ...base, opacity: 0, transform: "translateY(-32px)" };
+        case "left": return { ...base, opacity: 0, transform: "translateX(32px)" };
         case "right": return { ...base, opacity: 0, transform: "translateX(-32px)" };
         case "scale": return { ...base, opacity: 0, transform: "scale(0.9)" };
-        case "fade":  return { ...base, opacity: 0, transform: "none" };
+        case "fade": return { ...base, opacity: 0, transform: "none" };
       }
     }
     return { ...base, opacity: 1, transform: "none" };
   };
 
   return (
-    <div ref={ref} className={className} style={getInitialStyle()}>
+    <div ref={ref} style={getInitialStyle()} className={className}>
       {children}
     </div>
   );

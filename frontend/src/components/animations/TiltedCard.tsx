@@ -68,8 +68,6 @@ export function TiltedCard({
       }}
     >
       {children}
-
-      {/* Glare / Specular highlight layer */}
       <div
         className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-300"
         style={{

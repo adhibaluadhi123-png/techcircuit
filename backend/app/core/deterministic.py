@@ -1,317 +1,176 @@
-"""Deterministic Rule Engine for CANON Brand Governance.
-Handles exact checks with zero LLM hallucinations:
-- Terminology & Banned phrases
-- WCAG AA contrast ratio calculations
-- Brand palette hex matching
-- Flesch Reading Ease & sentence length
-"""
 import math
 import re
 from typing import List, Dict, Any, Tuple, Optional
+PERMITTED_DOMAINS = frozenset({'Terminology', 'Claims', 'Formatting', 'Brand Naming', 'Brand Naming & Trademarks', 'Logo & Identity', 'Logo & Visual Identity', 'Logo Usage', 'Packaging', 'Trademark', 'Color & Visual', 'Visual', 'Brand Voice', 'Product Claims'})
+STATIC_DIRECTIVE_PATTERNS = {'TERM-01': '\\b(?:Legacy\\s+Cloud|Apex\\s+Cloud)\\b', 'TERM-02': '\\b(?:100%\\s+uptime\\s+guaranteed|guaranteed\\s+100%\\s+uptime)\\b', 'NAME-01': '\\b(?:cloudplatform|Cloud\\s+platform|cloud\\s+platform|apexdynamics|Apex\\s+dynamics|apex\\s+dynamics)\\b', 'TM-01': '\\b(?:CloudPlatform|ApexDynamics|Apex\\s+Core)(?![®™\\u00AE\\u2122])\\b', 'CLAIM-01': '\\b(?:fastest\\s+platform\\s+in\\s+the\\s+world|undisputed\\s+leader)\\b', 'LOGO-01': '\\b(?:crowded\\s+logo|unapproved\\s+logo\\s+variant|altered\\s+logomark)\\b', 'LOGO-02': '\\b(?:distorted\\s+logo|recolored\\s+logo|drop\\s+shadow\\s+on\\s+logo)\\b'}
 
+class TerminologyPatternCompiler:
 
-def check_terminology_rules(
-    text: str,
-    rules: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
-    """
-    Execute deterministic terminology and banned-phrase rules against input text.
-    Returns structured candidate findings with exact spans.
-    """
-    findings = []
-    
-    ALLOWED_CATEGORIES = {
-        "Terminology", "Claims", "Formatting", "Brand Naming", "Brand Naming & Trademarks",
-        "Logo & Identity", "Logo & Visual Identity", "Logo Usage", "Packaging",
-        "Trademark", "Color & Visual", "Visual", "Brand Voice", "Product Claims"
-    }
-
-    for rule in rules:
-        if rule.get("enforcement_type") != "DETERMINISTIC":
-            continue
-        category = rule.get("category", "")
-        if category and category not in ALLOWED_CATEGORIES:
-            continue
-            
-        pattern = rule.get("pattern")
-        fail_example = rule.get("fail_example", "")
-        
-        # Explicit canonical patterns for core deterministic brand rules
+    @staticmethod
+    def resolve_expression(rule: Dict[str, Any]) -> Tuple[Optional[str], int]:
+        pattern = rule.get('pattern')
+        code = rule.get('rule_code')
+        if not pattern and code in STATIC_DIRECTIVE_PATTERNS:
+            pattern = STATIC_DIRECTIVE_PATTERNS[code]
         if not pattern:
-            rule_code = rule.get("rule_code")
-            if rule_code == "TERM-01":
-                pattern = r"\b(?:Legacy\s+Cloud|Apex\s+Cloud)\b"
-            elif rule_code == "TERM-02":
-                pattern = r"\b(?:100%\s+uptime\s+guaranteed|guaranteed\s+100%\s+uptime)\b"
-            elif rule_code == "NAME-01":
-                pattern = r"\b(?:cloudplatform|Cloud\s+platform|cloud\s+platform|apexdynamics|Apex\s+dynamics|apex\s+dynamics)\b"
-            elif rule_code == "TM-01":
-                pattern = r"\b(?:CloudPlatform|ApexDynamics|Apex\s+Core)(?![®™\u00AE\u2122])\b"
-            elif rule_code == "CLAIM-01":
-                pattern = r"\b(?:fastest\s+platform\s+in\s+the\s+world|undisputed\s+leader)\b"
-            elif rule_code == "LOGO-01":
-                pattern = r"\b(?:crowded\s+logo|unapproved\s+logo\s+variant|altered\s+logomark)\b"
-            elif rule_code == "LOGO-02":
-                pattern = r"\b(?:distorted\s+logo|recolored\s+logo|drop\s+shadow\s+on\s+logo)\b"
+            blob = f"{rule.get('title', '')} {rule.get('description', '')}"
+            quotes = re.findall('[\'\\"]([^\'\\"]{3,40})[\'\\"]', blob)
+            pass_text = rule.get('pass_example', '')
+            prohibited = [q for q in quotes if q.lower() not in pass_text.lower()]
+            if prohibited:
+                pattern = f"\\b(?:{'|'.join((re.escape(p.strip()) for p in prohibited))})\\b"
+            else:
+                fail_ex = rule.get('fail_example', '')
+                if fail_ex and len(fail_ex.strip()) <= 40:
+                    pattern = f'\\b{re.escape(fail_ex.strip())}\\b'
+        flags = 0 if code == 'NAME-01' else re.IGNORECASE
+        return (pattern, flags)
 
-        # If no explicit regex pattern is provided, extract quoted terms or keywords from title/description
+class TerminologyScanner:
+
+    @staticmethod
+    def find_substitute(rule: Dict[str, Any]) -> Optional[str]:
+        default_sub = rule.get('pass_example') or None
+        composite = f"{rule.get('title', '')} {rule.get('description', '')} {rule.get('pass_example', '')}"
+        candidates = re.findall('[\'\\"]([^\'\\"]{3,40})[\'\\"]', composite)
+        approved = [c for c in candidates if c.lower() in (rule.get('pass_example') or '').lower()]
+        return approved[0] if approved else default_sub
+
+    @classmethod
+    def execute_rule(cls, text_corpus: str, rule: Dict[str, Any]) -> List[Dict[str, Any]]:
+        if rule.get('enforcement_type') != 'DETERMINISTIC':
+            return []
+        category = rule.get('category', '')
+        if category and category not in PERMITTED_DOMAINS:
+            return []
+        pattern, flags = TerminologyPatternCompiler.resolve_expression(rule)
         if not pattern:
-            # Check for quoted phrases in title or description (e.g. 'Apex Cloud', '100% uptime guaranteed')
-            full_context = f"{rule.get('title', '')} {rule.get('description', '')}"
-            quoted_phrases = re.findall(r"['\"]([^'\"]{3,40})['\"]", full_context)
-            # Filter out non-prohibited quoted terms (like 'Apex Core' which is the pass example)
-            pass_ex = rule.get("pass_example", "")
-            prohibited_candidates = [p for p in quoted_phrases if p.lower() not in pass_ex.lower()]
-            
-            if prohibited_candidates:
-                sub_patterns = [re.escape(p.strip()) for p in prohibited_candidates]
-                pattern = rf"\b(?:{'|'.join(sub_patterns)})\b"
-            elif fail_example and len(fail_example.strip()) <= 40:
-                clean_phrase = re.escape(fail_example.strip())
-                pattern = rf"\b{clean_phrase}\b"
-            
-        if not pattern:
-            continue
-            
-        flags = 0 if rule.get("rule_code") == "NAME-01" else re.IGNORECASE
+            return []
+        outcomes = []
         try:
-            regex = re.compile(pattern, flags)
-            for match in regex.finditer(text):
-                # Extract concise surgical correction term if available
-                suggested = rule.get("pass_example") or None
-                full_pass_context = f"{rule.get('title', '')} {rule.get('description', '')} {rule.get('pass_example', '')}"
-                quoted_pass = re.findall(r"['\"]([^'\"]{3,40})['\"]", full_pass_context)
-                approved_candidates = [p for p in quoted_pass if p.lower() in (rule.get("pass_example") or "").lower()]
-                if approved_candidates:
-                    suggested = approved_candidates[0]
-
-                findings.append({
-                    "rule_id": rule.get("id"),
-                    "rule_code": rule.get("rule_code"),
-                    "category": rule.get("category"),
-                    "severity": rule.get("severity", "BLOCKING"),
-                    "span_start": match.start(),
-                    "span_end": match.end(),
-                    "matched_text": match.group(0),
-                    "source_quote": rule.get("source_quote"),
-                    "source_section": rule.get("source_section"),
-                    "explanation": f"Found prohibited terminology '{match.group(0)}'. Guideline requires: {rule.get('description')}",
-                    "evidence_status": "VERIFIED",
-                    "confidence_tier": "DETERMINISTIC",
-                    "suggested_correction": suggested,
-                    "verification_status": "VERIFIED"
-                })
+            compiled_re = re.compile(pattern, flags)
+            for m in compiled_re.finditer(text_corpus):
+                suggestion = cls.find_substitute(rule)
+                outcomes.append({'rule_id': rule.get('id'), 'rule_code': rule.get('rule_code'), 'category': rule.get('category'), 'severity': rule.get('severity', 'BLOCKING'), 'span_start': m.start(), 'span_end': m.end(), 'matched_text': m.group(0), 'source_quote': rule.get('source_quote'), 'source_section': rule.get('source_section'), 'explanation': f"Found prohibited terminology '{m.group(0)}'. Guideline requires: {rule.get('description')}", 'evidence_status': 'VERIFIED', 'confidence_tier': 'DETERMINISTIC', 'suggested_correction': suggestion, 'verification_status': 'VERIFIED'})
         except Exception:
-            continue
-            
-    return findings
+            return []
+        return outcomes
 
+def check_terminology_rules(text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    hits = []
+    for r in rules:
+        hits.extend(TerminologyScanner.execute_rule(text, r))
+    return hits
 
-# =========================================================================
-# WCAG AA Color Contrast & Hex Palette Verification
-# =========================================================================
+class WcagColorMetrics:
+
+    @staticmethod
+    def parse_hex(hex_val: str) -> Tuple[int, int, int]:
+        sanitized = hex_val.lstrip('#')
+        if len(sanitized) == 3:
+            sanitized = ''.join((ch * 2 for ch in sanitized))
+        if len(sanitized) != 6:
+            raise ValueError(f'Invalid hex color: {hex_val}')
+        return (int(sanitized[0:2], 16), int(sanitized[2:4], 16), int(sanitized[4:6], 16))
+
+    @classmethod
+    def relative_luminance(cls, triplet: Tuple[int, int, int]) -> float:
+        components = [val / 255.0 for val in triplet]
+        adjusted = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in components]
+        return 0.2126 * adjusted[0] + 0.7152 * adjusted[1] + 0.0722 * adjusted[2]
+
+    @classmethod
+    def contrast(cls, fg: str, bg: str) -> float:
+        l1 = cls.relative_luminance(cls.parse_hex(fg))
+        l2 = cls.relative_luminance(cls.parse_hex(bg))
+        return round((max(l1, l2) + 0.05) / (min(l1, l2) + 0.05), 2)
+
+    @classmethod
+    def distance(cls, h1: str, h2: str) -> float:
+        r1, g1, b1 = cls.parse_hex(h1)
+        r2, g2, b2 = cls.parse_hex(h2)
+        return math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2)
 
 def hex_to_rgb(hex_code: str) -> Tuple[int, int, int]:
-    """Convert hex color string to RGB tuple."""
-    hex_clean = hex_code.lstrip("#")
-    if len(hex_clean) == 3:
-        hex_clean = "".join([c*2 for c in hex_clean])
-    if len(hex_clean) != 6:
-        raise ValueError(f"Invalid hex color: {hex_code}")
-    return tuple(int(hex_clean[i:i+2], 16) for i in (0, 2, 4))  # type: ignore
+    return WcagColorMetrics.parse_hex(hex_code)
 
 def get_relative_luminance(rgb: Tuple[int, int, int]) -> float:
-    """Calculate WCAG relative luminance."""
-    sRGB = [v / 255.0 for v in rgb]
-    linear = []
-    for c in sRGB:
-        if c <= 0.04045:
-            linear.append(c / 12.92)
-        else:
-            linear.append(((c + 0.055) / 1.055) ** 2.4)
-    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+    return WcagColorMetrics.relative_luminance(rgb)
 
 def calculate_contrast_ratio(hex1: str, hex2: str) -> float:
-    """Calculate contrast ratio between two hex colors (WCAG 2.1)."""
-    rgb1 = hex_to_rgb(hex1)
-    rgb2 = hex_to_rgb(hex2)
-    l1 = get_relative_luminance(rgb1)
-    l2 = get_relative_luminance(rgb2)
-    lighter = max(l1, l2)
-    darker = min(l1, l2)
-    return round((lighter + 0.05) / (darker + 0.05), 2)
+    return WcagColorMetrics.contrast(hex1, hex2)
 
-def check_wcag_contrast(fg_hex: str, bg_hex: str, is_large_text: bool = False) -> Dict[str, Any]:
-    """
-    Check WCAG AA compliance:
-    Normal text: >= 4.5:1
-    Large text (>= 18pt / 14pt bold): >= 3.0:1
-    """
-    ratio = calculate_contrast_ratio(fg_hex, bg_hex)
-    threshold = 3.0 if is_large_text else 4.5
-    passes = ratio >= threshold
-    return {
-        "foreground": fg_hex,
-        "background": bg_hex,
-        "contrast_ratio": ratio,
-        "required_ratio": threshold,
-        "passes_wcag_aa": passes,
-        "level": "AA" if passes else "FAIL"
-    }
+def check_wcag_contrast(fg_hex: str, bg_hex: str, is_large_text: bool=False) -> Dict[str, Any]:
+    score = WcagColorMetrics.contrast(fg_hex, bg_hex)
+    bound = 3.0 if is_large_text else 4.5
+    valid = score >= bound
+    return {'foreground': fg_hex, 'background': bg_hex, 'contrast_ratio': score, 'required_ratio': bound, 'passes_wcag_aa': valid, 'level': 'AA' if valid else 'FAIL'}
 
 def color_distance_rgb(hex1: str, hex2: str) -> float:
-    """Euclidean distance in RGB color space."""
-    r1, g1, b1 = hex_to_rgb(hex1)
-    r2, g2, b2 = hex_to_rgb(hex2)
-    return math.sqrt((r1 - r2)**2 + (g1 - g2)**2 + (b1 - b2)**2)
+    return WcagColorMetrics.distance(hex1, hex2)
 
-def match_brand_palette(target_hex: str, approved_palette: List[str], max_tolerance: float = 35.0) -> Dict[str, Any]:
-    """
-    Check if a color belongs to or closely matches an approved brand palette.
-    """
-    closest_color = None
-    min_dist = float("inf")
-    
-    for approved in approved_palette:
-        dist = color_distance_rgb(target_hex, approved)
-        if dist < min_dist:
-            min_dist = dist
-            closest_color = approved
-            
-    is_exact = min_dist == 0.0
-    is_acceptable = min_dist <= max_tolerance
-    
-    return {
-        "target_color": target_hex,
-        "closest_approved": closest_color,
-        "distance": round(min_dist, 2),
-        "is_exact_match": is_exact,
-        "is_approved": is_acceptable
-    }
+def match_brand_palette(target_hex: str, approved_palette: List[str], max_tolerance: float=35.0) -> Dict[str, Any]:
+    scored = [(WcagColorMetrics.distance(target_hex, app), app) for app in approved_palette]
+    if not scored:
+        return {'target_color': target_hex, 'closest_approved': None, 'distance': float('inf'), 'is_exact_match': False, 'is_approved': False}
+    dist_val, closest = min(scored, key=lambda x: x[0])
+    return {'target_color': target_hex, 'closest_approved': closest, 'distance': round(dist_val, 2), 'is_exact_match': dist_val == 0.0, 'is_approved': dist_val <= max_tolerance}
 
+class TextReadabilityEngine:
 
-# =========================================================================
-# Readability & Structural Metrics
-# =========================================================================
+    @staticmethod
+    def count_word_syllables(token: str) -> int:
+        cleaned = token.lower().strip('.:;?!')
+        if not cleaned:
+            return 0
+        if len(cleaned) <= 3:
+            return 1
+        filtered = re.sub('(?:[^laeiouy]|ed|es|e)$', '', cleaned)
+        filtered = re.sub('^y', '', filtered)
+        matches = re.findall('[aeiouy]{1,2}', filtered)
+        return max(1, len(matches))
+
+    @classmethod
+    def analyze(cls, text: str) -> Dict[str, Any]:
+        sentence_nodes = [s.strip() for s in re.split('[.!?]+', text) if s.strip()]
+        token_nodes = re.findall("\\b[A-Za-z0-9\\'-]+\\b", text)
+        n_sent = max(1, len(sentence_nodes))
+        n_words = max(1, len(token_nodes))
+        total_syllables = sum((cls.count_word_syllables(w) for w in token_nodes))
+        word_len_avg = n_words / n_sent
+        syllable_avg = total_syllables / n_words
+        flesch = round(max(0.0, min(100.0, 206.835 - 1.015 * word_len_avg - 84.6 * syllable_avg)), 1)
+        level = 'Easy' if flesch >= 70 else 'Standard' if flesch >= 50 else 'Difficult'
+        return {'word_count': n_words, 'sentence_count': n_sent, 'average_sentence_length': round(word_len_avg, 1), 'flesch_reading_ease': flesch, 'reading_level': level}
 
 def count_syllables(word: str) -> int:
-    """Basic English syllable counter heuristic."""
-    word = word.lower().strip(".:;?!")
-    if not word:
-        return 0
-    if len(word) <= 3:
-        return 1
-    word = re.sub(r'(?:[^laeiouy]|ed|es|e)$', '', word)
-    word = re.sub(r'^y', '', word)
-    matches = re.findall(r'[aeiouy]{1,2}', word)
-    return max(1, len(matches))
+    return TextReadabilityEngine.count_word_syllables(word)
 
 def calculate_readability_metrics(text: str) -> Dict[str, Any]:
-    """
-    Calculate Flesch Reading Ease & basic linguistic properties:
-    Score = 206.835 - 1.015 * (total_words / total_sentences) - 84.6 * (total_syllables / total_words)
-    """
-    sentences = [s.strip() for s in re.split(r'[.!?]+', text) if s.strip()]
-    words = [w for w in re.findall(r'\b[A-Za-z0-9\'-]+\b', text)]
-    
-    total_sentences = max(1, len(sentences))
-    total_words = max(1, len(words))
-    total_syllables = sum(count_syllables(w) for w in words)
-    
-    avg_sentence_len = total_words / total_sentences
-    avg_syllables_per_word = total_syllables / total_words
-    
-    flesch_score = 206.835 - (1.015 * avg_sentence_len) - (84.6 * avg_syllables_per_word)
-    flesch_score = round(max(0.0, min(100.0, flesch_score)), 1)
-    
-    return {
-        "word_count": total_words,
-        "sentence_count": total_sentences,
-        "average_sentence_length": round(avg_sentence_len, 1),
-        "flesch_reading_ease": flesch_score,
-        "reading_level": "Easy" if flesch_score >= 70 else ("Standard" if flesch_score >= 50 else "Difficult")
-    }
+    return TextReadabilityEngine.analyze(text)
 
-
-# =========================================================================
-# Brand Asset, Logo Geometry & Trademark Compliance
-# =========================================================================
-
-def validate_logo_dimensions(
-    width: float,
-    height: float,
-    required_ratio: float = 4.0,
-    ratio_tolerance: float = 0.05,
-    min_height_px: int = 24
-) -> Dict[str, Any]:
-    """
-    Validate logo dimensions, aspect ratio preservation, and minimum display size.
-    Prevents stretched, squashed, or illegibly small logo rendering.
-    """
+def validate_logo_dimensions(width: float, height: float, required_ratio: float=4.0, ratio_tolerance: float=0.05, min_height_px: int=24) -> Dict[str, Any]:
     if height <= 0:
-        return {"valid": False, "reason": "Logo height must be greater than zero."}
-    
-    actual_ratio = round(width / height, 2)
-    ratio_diff = abs(actual_ratio - required_ratio)
-    is_distorted = ratio_diff > ratio_tolerance
-    is_undersized = height < min_height_px
+        return {'valid': False, 'reason': 'Logo height must be greater than zero.'}
+    actual = round(width / height, 2)
+    distorted = abs(actual - required_ratio) > ratio_tolerance
+    undersized = height < min_height_px
+    return {'width': width, 'height': height, 'actual_ratio': actual, 'required_ratio': required_ratio, 'is_distorted': distorted, 'is_undersized': undersized, 'passes_spec': not distorted and (not undersized), 'clearspace_margin_px': round(height * 0.5, 1)}
 
-    return {
-        "width": width,
-        "height": height,
-        "actual_ratio": actual_ratio,
-        "required_ratio": required_ratio,
-        "is_distorted": is_distorted,
-        "is_undersized": is_undersized,
-        "passes_spec": not is_distorted and not is_undersized,
-        "clearspace_margin_px": round(height * 0.5, 1)  # standard 'A' height isolation zone
-    }
-
-def check_trademark_compliance(
-    text: str,
-    master_brand: str = "ApexDynamics",
-    product_lines: Optional[List[str]] = None
-) -> List[Dict[str, Any]]:
-    """
-    Verify whether registered trademarks (®) and product line trademarks (™)
-    are properly designated upon initial occurrence in customer-facing collateral.
-    """
-    if product_lines is None:
-        product_lines = ["Apex Core", "Apex Pulse", "Apex Studio"]
-
-    findings = []
-    
-    # 1. Check master brand first-occurrence trademark designation
-    master_matches = list(re.finditer(rf"\b{re.escape(master_brand)}\b", text))
-    if master_matches:
-        first_match = master_matches[0]
-        # Check if immediately followed by ®
-        subsequent = text[first_match.end():first_match.end()+2]
-        if "®" not in subsequent:
-            findings.append({
-                "rule_code": "TM-01",
-                "brand_name": master_brand,
-                "span_start": first_match.start(),
-                "span_end": first_match.end(),
-                "explanation": f"First mention of '{master_brand}' requires registered trademark symbol: '{master_brand}®'.",
-                "suggested_correction": f"{master_brand}®"
-            })
-
-    # 2. Check product line trademarks (™)
-    for prod in product_lines:
-        p_matches = list(re.finditer(rf"\b{re.escape(prod)}\b", text))
-        if p_matches:
-            first_match = p_matches[0]
-            subsequent = text[first_match.end():first_match.end()+2]
-            if "™" not in subsequent and "®" not in subsequent:
-                findings.append({
-                    "rule_code": "TM-02",
-                    "brand_name": prod,
-                    "span_start": first_match.start(),
-                    "span_end": first_match.end(),
-                    "explanation": f"First mention of product line '{prod}' requires trademark symbol: '{prod}™'.",
-                    "suggested_correction": f"{prod}™"
-                })
-
-    return findings
-
+def check_trademark_compliance(text: str, master_brand: str='ApexDynamics', product_lines: Optional[List[str]]=None) -> List[Dict[str, Any]]:
+    lines = product_lines or ['Apex Core', 'Apex Pulse', 'Apex Studio']
+    anomalies = []
+    m_hits = list(re.finditer(f'\\b{re.escape(master_brand)}\\b', text))
+    if m_hits:
+        first = m_hits[0]
+        tail = text[first.end():first.end() + 2]
+        if '®' not in tail:
+            anomalies.append({'rule_code': 'TM-01', 'brand_name': master_brand, 'span_start': first.start(), 'span_end': first.end(), 'explanation': f"First mention of '{master_brand}' requires registered trademark symbol: '{master_brand}®'.", 'suggested_correction': f'{master_brand}®'})
+    for line_name in lines:
+        p_hits = list(re.finditer(f'\\b{re.escape(line_name)}\\b', text))
+        if p_hits:
+            lead = p_hits[0]
+            tail = text[lead.end():lead.end() + 2]
+            if '™' not in tail and '®' not in tail:
+                anomalies.append({'rule_code': 'TM-02', 'brand_name': line_name, 'span_start': lead.start(), 'span_end': lead.end(), 'explanation': f"First mention of product line '{line_name}' requires trademark symbol: '{line_name}™'.", 'suggested_correction': f'{line_name}™'})
+    return anomalies
